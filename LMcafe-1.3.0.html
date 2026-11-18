@@ -655,10 +655,11 @@ const EVENT_DEFINITIONS = Object.freeze({
   1:Object.freeze({day:15,name:'初春祭',options:Object.freeze([{label:'知道了'}])})
 });
 function activateDayEvent(){
-  if(state.day!==15){eventId=0;return false;}
-  const isNewEvent=eventId!==1;
-  eventId=1;
-  if(!state.specialCustomer)state.specialCustomer={id:state.nextCustomerId++,kind:'special'};
+  const activeId=Number(Object.keys(EVENT_DEFINITIONS).find(id=>EVENT_DEFINITIONS[id].day===state.day)||0);
+  if(!activeId){eventId=0;return false;}
+  const isNewEvent=eventId!==activeId;
+  eventId=activeId;
+  if(eventId===1&&!state.specialCustomer)state.specialCustomer={id:state.nextCustomerId++,kind:'special'};
   VisualSystem.dispatch('customers');
   if(isNewEvent)VisualSystem.dispatch('event.show');
   return true;
