@@ -1865,7 +1865,7 @@ function drawSpecialCustomer(){
   const area=$('specialCustomerArea'),host=$('specialCustomerCard');
   if(!area||!host)return;
   const customer=visualState?.specialCustomer;
-  const productionVisible=['productionTakeoutView','productionIndoorView','productionMaterialsView'].some(id=>!$(id)?.classList.contains('hidden'));
+  const productionVisible=['productionTakeoutView','productionIndoorView','productionMaterialsView','customProductionView'].some(id=>!$(id)?.classList.contains('hidden'));
   area.classList.toggle('hidden',!customer||!productionVisible);
   host.replaceChildren();
   if(!customer)return;
