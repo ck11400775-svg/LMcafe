@@ -607,7 +607,7 @@ const state = {
   discount:1, d1Choice:null,
   income:0, spend:0, longRep:0, shortRep:0,
   expansionCount:0, solar:0, decor:0, serviceFee:0, loanBalance:0, loanRate:1.5, loanDue:30,
-  mealLimit:30, robotEmployees:[], noticeLog:[], beanUnlockNotified:[], specialCustomer:null,
+  mealLimit:30, robotEmployees:[], noticeLog:[], beanUnlockNotified:[], specialCustomer:null, memberCustomers:[],
   devices:{smartOrderMachine:{level:1,count:1},light:{level:1,count:5}},
   electricityPeriodCost:0,electricityPeriodUsage:0,electricityTotalUsage:0,electricityTotalCost:0,utilityDue:60
 };
@@ -674,15 +674,56 @@ function addNotice(type, message, day = state.day) {
   VisualSystem.dispatch('noticeLog');
 }
 // 唯一事件資料：事件編號同時供事件顯示與日期名稱查詢。
+const SPECIAL_FESTIVAL_INGREDIENTS=Object.freeze([
+  Object.freeze({id:'sakuraPetal',name:'櫻花花瓣',color:'#f3a9c7'}),
+  Object.freeze({id:'sakuraHoney',name:'櫻花蜜',color:'#e8bd62'}),
+  Object.freeze({id:'peachJuice',name:'桃子汁',color:'#e98978'}),
+  Object.freeze({id:'willowLeaf',name:'柳葉',color:'#76a987'}),
+  Object.freeze({id:'springCoffee',name:'春季限定咖啡',color:'#80543c'})
+]);
+const SPECIAL_RANDOM_INGREDIENTS=Object.freeze(['sakuraPetal','sakuraHoney','peachJuice','willowLeaf']);
+function createSpecialCustomer(){
+  const pool=[...SPECIAL_RANDOM_INGREDIENTS],randomPair=[];
+  while(randomPair.length<2){const index=Math.floor(Math.random()*pool.length);randomPair.push(pool.splice(index,1)[0]);}
+  return {id:state.nextCustomerId++,kind:'special',requiredIngredients:['springCoffee',...randomPair],selectedIngredients:[]};
+}
 const EVENT_DEFINITIONS = Object.freeze({
   1:Object.freeze({day:15,name:'初春祭',options:Object.freeze([{label:'知道了'}])})
 });
+function toggleSpecialCustomerIngredient(ingredientId){
+  const customer=state.specialCustomer;
+  if(!customer||!SPECIAL_FESTIVAL_INGREDIENTS.some(item=>item.id===ingredientId))return false;
+  const selected=customer.selectedIngredients||[];
+  customer.selectedIngredients=selected.includes(ingredientId)?selected.filter(id=>id!==ingredientId):[...selected,ingredientId];
+  VisualSystem.dispatch('customProduction');
+  return true;
+}
+function makeSpecialCustomerOrder(){
+  const customer=state.specialCustomer;
+  if(!customer)return false;
+  const requested=[...customer.requiredIngredients].sort();
+  const selected=[...(customer.selectedIngredients||[])].sort();
+  const success=requested.length===selected.length&&requested.every((id,index)=>id===selected[index]);
+  if(!success){
+    DisplayText.notify('客製化製作失敗，加入的原料與顧客需求不同。');
+    DisplayText.record('初春祭特殊顧客客製化製作失敗。');
+    return false;
+  }
+  const memberId=state.nextCustomerId++;
+  state.memberCustomers.push({id:memberId,tier:'bronze'});
+  state.specialCustomer=null;
+  DisplayText.notify('客製化製作成功，獲得一位青銅級會員顧客。');
+  DisplayText.record('完成初春祭特殊顧客需求，獲得一位青銅級會員顧客。');
+  VisualSystem.dispatch('game');
+  VisualSystem.dispatch('customProduction');
+  return true;
+}
 function activateDayEvent(){
   const activeId=Number(Object.keys(EVENT_DEFINITIONS).find(id=>EVENT_DEFINITIONS[id].day===state.day)||0);
   if(!activeId){eventId=0;return false;}
   const isNewEvent=eventId!==activeId;
   eventId=activeId;
-  if(eventId===1&&!state.specialCustomer)state.specialCustomer={id:state.nextCustomerId++,kind:'special'};
+  if(eventId===1&&!state.specialCustomer)state.specialCustomer=createSpecialCustomer();
   VisualSystem.dispatch('customers');
   if(isNewEvent)VisualSystem.dispatch('event.show');
   return true;
@@ -1560,6 +1601,8 @@ function bindGameEvents() {
       return;
     }
     if(button.dataset.eventOption!==undefined){VisualSystem.dispatch('event.option',Number(button.dataset.eventOption));return;}
+    if(button.dataset.specialIngredient){toggleSpecialCustomerIngredient(button.dataset.specialIngredient);return;}
+    if(button.id==='customProductionMake'){makeSpecialCustomerOrder();return;}
     if(button.dataset.specialCustomerAction){openSpecialCustomerProduction(Number(button.dataset.specialCustomerAction));return;}
     if(button.dataset.customerAction){
       makeCustomerCoffee(Number(button.dataset.customerAction));
@@ -1635,7 +1678,8 @@ function createVisualSnapshot(){
     beans:{...state.beans},
     cups:{...state.cups},
     customers:state.customers.map(customer=>({...customer})),
-    specialCustomer:state.specialCustomer?{...state.specialCustomer}:null,
+    specialCustomer:state.specialCustomer?{...state.specialCustomer,requiredIngredients:[...(state.specialCustomer.requiredIngredients||[])],selectedIngredients:[...(state.specialCustomer.selectedIngredients||[])]}:null,
+    memberCustomers:state.memberCustomers.map(customer=>({...customer})),
     eventId,
     day:state.day,
     decor:state.decor,
@@ -1884,6 +1928,27 @@ function drawCustomerList(channel,hostId){
     box.append(card);
   }
 }
+function drawCustomProduction(){
+  const customer=visualState?.specialCustomer;
+  const request=$('customProductionRequest'),ingredients=$('customProductionIngredients'),preview=$('customProductionPreview'),make=$('customProductionMake'),result=$('customProductionResult');
+  if(!request||!ingredients||!preview||!make||!result)return false;
+  ingredients.replaceChildren();preview.replaceChildren();
+  if(!customer){DisplayText.setText(request,'目前沒有待製作的特殊顧客需求。');DisplayText.setText(result,'');make.disabled=true;return false;}
+  const names=customer.requiredIngredients.map(id=>SPECIAL_FESTIVAL_INGREDIENTS.find(item=>item.id===id)?.name||'').filter(Boolean);
+  DisplayText.setText(request,'特殊顧客 #'+customer.id+'：'+names.join('＋'));
+  const selected=customer.selectedIngredients||[];
+  SPECIAL_FESTIVAL_INGREDIENTS.forEach(item=>{
+    const button=createVisualNode('button','custom-ingredient-option',item.name);
+    button.type='button';button.dataset.specialIngredient=item.id;button.setAttribute('aria-pressed',String(selected.includes(item.id)));ingredients.append(button);
+  });
+  const cup=createVisualNode('div','custom-cup-section');
+  (selected.length?selected:['springCoffee']).forEach(id=>{
+    const item=SPECIAL_FESTIVAL_INGREDIENTS.find(entry=>entry.id===id);if(!item)return;
+    const layer=createVisualNode('div','custom-cup-layer');layer.style.background=item.color;cup.append(layer);
+  });
+  preview.append(cup);DisplayText.setText(result,'已加入 '+selected.length+' 種原料');make.disabled=false;return true;
+}
+
 function drawSpecialCustomer(){
   const area=$('specialCustomerArea'),host=$('specialCustomerCard');
   if(!area||!host)return;
@@ -1963,10 +2028,7 @@ function drawFeatureView(id,title){
  $('productionTabs').classList.toggle('hidden',!id.startsWith('production'));
  document.querySelectorAll('[data-prod-tab]').forEach(b=>b.classList.toggle('active',b.dataset.prodTab===id));
  if(id==='noticeView')VisualSystem.dispatch('noticeLog');
- if(id==='customProductionView'){
-  const customer=visualState.specialCustomer;
-  DisplayText.setText($('customProductionCustomer'),customer?`特殊顧客 #${customer.id}`:'特殊顧客目前不在店內。');
- }
+ if(id==='customProductionView')drawCustomProduction();
  drawSpecialCustomer();
  const headerNav=document.querySelector('.feature-head .nav-actions');
  headerNav?.classList.remove('hidden');
@@ -2283,7 +2345,7 @@ function createBeanGradeCard(id){
 const VisualSystem = Object.freeze({
   dispatch(target='game', ...args){
     const isRootDispatch=visualDispatchDepth===0;
-    const needsSnapshot=['game','feature.show','noticeLog','customers','robotManagement','robotCountdowns','departureAlerts','controlComputer','achievements','shopProducts','loan','shop.category','feature.tab','beanGacha.refresh','beanDrawResults','mealScan','mealGacha.refresh','achievement.archive.open','event.show'].includes(target);
+    const needsSnapshot=['game','feature.show','noticeLog','customers','robotManagement','robotCountdowns','departureAlerts','controlComputer','achievements','shopProducts','loan','shop.category','feature.tab','beanGacha.refresh','beanDrawResults','mealScan','mealGacha.refresh','achievement.archive.open','event.show','customProduction'].includes(target);
     if(isRootDispatch&&needsSnapshot)visualState=createVisualSnapshot();
     visualDispatchDepth++;
     try{
@@ -2338,6 +2400,7 @@ const VisualSystem = Object.freeze({
         return updateDepartureAlerts();
       }
       case 'event.show': return drawEventDialog(...args);
+      case 'customProduction': return drawCustomProduction();
       case 'event.option': {
         const option=EVENT_DEFINITIONS[eventId]?.options[Number(args[0])];
         if(!option)return false;
@@ -2379,7 +2442,7 @@ const VisualSystem = Object.freeze({
         return mode;
       }
       case 'feature.hide': {
-        ['productionTakeoutView','productionIndoorView','productionMaterialsView','smartControlView','controlComputerView','noticeView'].forEach(id=>$(id)?.classList.add('hidden'));
+        ['productionTakeoutView','productionIndoorView','productionMaterialsView','smartControlView','controlComputerView','noticeView','customProductionView'].forEach(id=>$(id)?.classList.add('hidden'));
         $('productionTabs').classList.add('hidden');return true;
       }
       case 'console.toggle': {
