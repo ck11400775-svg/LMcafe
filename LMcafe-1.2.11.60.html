@@ -1471,8 +1471,11 @@ function bindGameEvents() {
     const close=id=>VisualSystem.dispatch('dialog.close',id);
     if(page==='featureDialog'){
       if(action==='home'){close(page);return;}
-      if(!$('computerPartDetailView').classList.contains('hidden')){VisualSystem.dispatch('controlComputer');return;}
-      if(!$('computerBoardView').classList.contains('hidden')){VisualSystem.dispatch('feature.show','smartControlView','店面智控');return;}
+      const computerView=$('controlComputerView');
+      if(computerView&&!computerView.classList.contains('hidden')){
+        if(!$('computerPartDetailView').classList.contains('hidden')){VisualSystem.dispatch('controlComputer');return;}
+        if(!$('computerBoardView').classList.contains('hidden')){VisualSystem.dispatch('feature.show','smartControlView','店面智控');return;}
+      }
       close(page);return;
     }
     if(page==='shopDialog'){
@@ -2253,10 +2256,6 @@ const VisualSystem = Object.freeze({
         const mode=args[0],categoryView=$('shopCategoryView'),productView=$('shopProductView'),products=$('shopProducts');
         if(mode==='home'||mode==='back'){categoryView.classList.remove('hidden');productView.classList.add('hidden');products.dataset.category='';}
         else if(mode==='products'){categoryView.classList.add('hidden');productView.classList.remove('hidden');products.dataset.category=String(args[1]||'');}
-        else if(mode==='close'){
-          if(!productView.classList.contains('hidden')){categoryView.classList.remove('hidden');productView.classList.add('hidden');products.dataset.category='';}
-          else return VisualSystem.dispatch('dialog.close','shopDialog');
-        }
         return mode;
       }
       case 'feature.hide': {
