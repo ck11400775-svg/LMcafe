@@ -1877,7 +1877,7 @@ function drawFeatureView(id,title){
  document.querySelectorAll('[data-prod-tab]').forEach(b=>b.classList.toggle('active',b.dataset.prodTab===id));
  if(id==='noticeView')VisualSystem.dispatch('noticeLog');
  const headerNav=document.querySelector('.feature-head .nav-actions');
- headerNav?.classList.toggle('hidden',id==='controlComputerView');
+ headerNav?.classList.remove('hidden');
  if(id==='controlComputerView'){ $('computerPartDetailView').classList.add('hidden'); $('computerBoardView').classList.remove('hidden'); VisualSystem.dispatch('controlComputer'); }
  if(id==='productionMaterialsView'){
   DisplayText.setText($('materialSelectedBean'), `${BEAN_GRADE[visualState.selectedBean]} 級`);
@@ -2112,7 +2112,7 @@ function drawControlComputer(partId=null){
   }
   const slots=document.querySelectorAll('[data-computer-slot]');
   board?.classList.remove('hidden');detail?.classList.add('hidden');
-  document.querySelector('.feature-head .nav-actions')?.classList.add('hidden');
+  document.querySelector('.feature-head .nav-actions')?.classList.remove('hidden');
   return slots.length;
 }
 
