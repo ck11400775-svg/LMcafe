@@ -2056,13 +2056,6 @@ function drawGameView() {
   put('net', moneyText(visualState.income-visualState.spend));
   $('pricePanel').classList.toggle('hidden', !LevelSystem.isUnlocked('priceAdjustment',null,visualState.level));
   $('milkType').disabled = !LevelSystem.isUnlocked('milk',null,visualState.level);
-  document.querySelectorAll('[data-buy-milk]').forEach(button => {
-    const item = MILK_INFO[button.dataset.buyMilk];
-    const unavailable = !item;
-    button.disabled = unavailable;
-    button.classList.toggle('unavailable', unavailable);
-    if (item) DisplayText.setText(button, '購買');
-  });
   document.querySelectorAll('[data-bean]').forEach(button => {
     const id=beanId(button.dataset.bean); button.classList.toggle('primary', id === visualState.selectedBean);
     button.classList.toggle('secondary', id !== visualState.selectedBean); button.disabled=!id || !LevelSystem.isUnlocked('bean',id,visualState.level);
