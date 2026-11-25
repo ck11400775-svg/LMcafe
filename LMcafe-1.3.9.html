@@ -465,16 +465,6 @@ const COFFEE_RECIPE = {
   "CUP-2":{beans:30,energy:3,ep:20},"CUP-3":{beans:35,energy:4,ep:25}
 };
 const CUP_WEIGHT_FACTOR = {"CUP-0":1,"CUP-1":1.1,"CUP-2":1.2,"CUP-3":1.3};
-// 唯一等級限制資料與判斷程式；所有功能及畫面只透過 LevelSystem 查詢。
-const LEVEL_REQUIREMENTS = Object.freeze({
-  bean:Object.freeze({"BEAN-0":0,"BEAN-1":0,"BEAN-2":0,"BEAN-3":3,"BEAN-4":6,"BEAN-5":9,"BEAN-6":12,"BEAN-7":15,"BEAN-8":18,"BEAN-9":21,"BEAN-10":24,"BEAN-11":27,"BEAN-12":30,"BEAN-13":33}),
-  cup:Object.freeze({"CUP-0":0,"CUP-1":4,"CUP-2":8,"CUP-3":12}),
-  milk:5, indoor:5, expansion:5, indoorCups:5, serviceFee:5, mealLimit:5, priceAdjustment:2, robot:20
-});
-const LevelSystem = Object.freeze({
-  required(type,id=null){const rule=LEVEL_REQUIREMENTS[type];return rule&&typeof rule==='object'?(rule[id]??Infinity):(Number(rule)||0);},
-  isUnlocked(type,id=null,level=state.level){return Number(level)>=this.required(type,id);}
-});
 const DEFAULT_BEANS = Object.fromEntries(BEANS.map(id=>[id,0]));
 const DEFAULT_CUPS = Object.fromEntries(CUP_IDS.map(id=>[id,0]));
 function normalizeBeanCupState(target){
@@ -496,6 +486,8 @@ const MILK_INFO = {
   uht:{id:'MILK-3',label:'保久乳',pack:1000,unit:'ml',use:50,cost:70}
 };
 // Debug/輸入防護上限：純技術安全限制，不代表遊戲平衡數值。
+// 共用輸入安全限制：供遊戲數值與 Debug 輸入共用。
+const INPUT_LIMITS = { money:1_000_000_000, ep:1_000_000_000, day:1_000_000, bean:1_000_000_000, cup:1_000_000, stock:1_000_000_000, count:1_000_000 };
 const EXPANSION_COSTS = Object.freeze([1000000,2000000,4000000,8000000,16000000,32000000,64000000]);
 const state = {
   money:10000, gl:0, energy:30, energyInfinite:false, maxEnergy:30, ep:0, level:0, day:1, weather:null, weatherDay:0,
@@ -640,7 +632,7 @@ function addNotice(type, message, day = state.day) {
   if (state.noticeLog.length > 100) state.noticeLog.length = 100;
   VisualSystem.dispatch('noticeLog');
 }
-// 唯一事件資料：事件編號同時供事件顯示與日期名稱查詢。
+// 唯一事件區｜事件資料、特殊顧客與 D1 開幕事件
 const SPECIAL_FESTIVAL_INGREDIENTS=Object.freeze([
   Object.freeze({id:'sakuraPetal',name:'櫻花花瓣',color:'#f3a9c7'}),
   Object.freeze({id:'sakuraHoney',name:'櫻花蜜',color:'#e8bd62'}),
@@ -695,12 +687,7 @@ function activateDayEvent(){
   if(isNewEvent)VisualSystem.dispatch('event.show');
   return true;
 }
-// 功能區只呼叫唯一顯示提示文字區，不自行執行通知或紀錄文字呈現。
-const notify = DisplayText.notify;
-const record = DisplayText.record;
-// ============================================================
-// 03. D1 開幕事件與對話
-// ============================================================
+
 function chooseOpeningDiscount(choice, multiplier, message) {
   if (state.day !== 1 || state.d1Choice !== null) return;
   state.d1Choice = choice;
@@ -720,6 +707,12 @@ function openingEvent() {
   const dialog = $('openingDiscountDialog');
   if (dialog && !dialog.open) VisualSystem.dispatch('dialog.open', dialog);
 }
+// 功能區只呼叫唯一顯示提示文字區，不自行執行通知或紀錄文字呈現。
+const notify = DisplayText.notify;
+const record = DisplayText.record;
+// ============================================================
+// 03. D1 開幕事件與對話
+// ============================================================
 // ============================================================
 // 04. 咖啡豆解鎖狀態與通知
 // ============================================================
@@ -744,7 +737,7 @@ const BeanUnlockSystem = Object.freeze({
   getNotified(){ return [...normalizeBeanUnlockState(state)]; }
 });
 // ============================================================
-// 05. 日期、天氣與等級
+// 唯一日期與天氣區
 // ============================================================
 function calendarInfo(day=state.day){
   const n=Math.max(1,integerize(Number(day)||1,'floor'));
@@ -763,6 +756,20 @@ function rollOrdinaryWeather(){
   state.weather=r<sunny?'晴天':r<sunny+cloudy?'陰天':'雨天';
   state.weatherDay=state.day;
 }
+
+// ============================================================
+// 唯一等級系統區
+// ============================================================
+// 唯一等級限制資料與判斷程式；所有功能及畫面只透過 LevelSystem 查詢。
+const LEVEL_REQUIREMENTS = Object.freeze({
+  bean:Object.freeze({"BEAN-0":0,"BEAN-1":0,"BEAN-2":0,"BEAN-3":3,"BEAN-4":6,"BEAN-5":9,"BEAN-6":12,"BEAN-7":15,"BEAN-8":18,"BEAN-9":21,"BEAN-10":24,"BEAN-11":27,"BEAN-12":30,"BEAN-13":33}),
+  cup:Object.freeze({"CUP-0":0,"CUP-1":4,"CUP-2":8,"CUP-3":12}),
+  milk:5, indoor:5, expansion:5, indoorCups:5, serviceFee:5, mealLimit:5, priceAdjustment:2, robot:20
+});
+const LevelSystem = Object.freeze({
+  required(type,id=null){const rule=LEVEL_REQUIREMENTS[type];return rule&&typeof rule==='object'?(rule[id]??Infinity):(Number(rule)||0);},
+  isUnlocked(type,id=null,level=state.level){return Number(level)>=this.required(type,id);}
+});
 function updateLevel(previousLevel = state.level, grantLevelRewards = true, silent = false) {
   state.level = levelFor(state.ep);
   if (state.level !== previousLevel) state.ep = threshold(state.level);
@@ -1304,7 +1311,6 @@ function selectAchievement(id){
 // ============================================================
 // 15. Debug 專區｜所有 Debug 指令集中於此區
 // ============================================================
-const INPUT_LIMITS = { money:1_000_000_000, ep:1_000_000_000, day:1_000_000, bean:1_000_000_000, cup:1_000_000, stock:1_000_000_000, count:1_000_000 };
 const DebugSystem = (() => {
   const help = 'all max · money N|max · gl N|max · lv N|max · ep N|max · day N|max · energy N|max|inf · bean 豆級 N|max · cup 杯型 N|max';
   function write(message) {
