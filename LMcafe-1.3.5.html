@@ -348,17 +348,14 @@ let currentScreen = 'L0';
 let soundDialogOrigin = 'L0';
 function enterGameScreen(){
   currentScreen='L1';
-  document.body.classList.remove('screen-l0');
-  promoteStatusBar();
+  VisualSystem.dispatch('screen','L1');
   if(timestop)setTimeStop(false);
   activateDayEvent();
   openingEvent();
 }
 function returnToMainMenu(){
   currentScreen='L0';
-  document.body.classList.add('screen-l0');
-  const bar=document.querySelector('.top-status-bar');
-  if(bar&&bar.matches(':popover-open'))bar.hidePopover();
+  VisualSystem.dispatch('screen','L0');
   if(!timestop)setTimeStop(true);
 }
 
@@ -2526,6 +2523,15 @@ const VisualSystem = Object.freeze({
       switch(target){
       case 'environment.get': return getVisualEnvironment();
       case 'styles.get': return getVisualStyles();
+      case 'screen': {
+        const mode=String(args[0]||'L1');
+        document.body.classList.toggle('screen-l0',mode==='L0');
+        const bar=document.querySelector('.top-status-bar');
+        if(mode==='L0'){
+          if(bar&&bar.matches(':popover-open'))bar.hidePopover();
+        }else promoteStatusBar();
+        return mode;
+      }
       case 'shop.category': {
         const category=args[0],names={beans:'咖啡豆',cups:'外帶杯',milk:'牛奶原料',decor:'裝潢',robot:'機器人'};
         DisplayText.setText($('shopCategoryTitle'),names[category]||'商品');
@@ -3053,7 +3059,7 @@ window.LMcafeGachaSystem=GachaSystem;
 
 // 主程式初始化：正規化狀態、綁定操作並啟動遊戲流程。
 
-document.body.classList.add('screen-l0');
+VisualSystem.dispatch('screen','L0');
 normalizeBeanCupState(state);
 normalizeBeanUnlockState(state);
 if(BEANS.length!==14 || CUP_IDS.length!==4) throw new Error('Bean/Cup ID registry integrity check failed');
