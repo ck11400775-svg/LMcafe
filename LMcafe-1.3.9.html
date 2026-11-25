@@ -1704,13 +1704,6 @@ function getShopDisplayData(category,sourceState=visualState){
   }
   return {category,rows};
 }
-function getBeanGachaDisplayData(sourceState=visualState){
-  const pool=window.LMcafeAPI?.['07']?.['抽獎池管理/取得抽獎池']?.(sourceState.level)??[];
-  const getIdName=window.LMcafeAPI?.['02']?.['ID 查詢/查詢 ID 名稱'];
-  const displayPool=pool.map(item=>({grade:getIdName?.(item.id)||BEAN_GRADE[item.id]||'',rate:item.rate})).filter(item=>item.grade);
-  const drawPending=window.LMcafeGachaSystem?.isBeanDrawPending?.()??false;
-  return {money:sourceState.money,gl:sourceState.gl||0,level:sourceState.level,displayPool,unavailable:!displayPool.length,drawOneDisabled:!displayPool.length||sourceState.money<5000||(sourceState.gl||0)<5||drawPending,drawTenDisabled:!displayPool.length||sourceState.money<50000||(sourceState.gl||0)<50||drawPending};
-}
 function getLoanDisplayData(sourceState=visualState){
   const max=loanCreditLimit(sourceState),balance=Math.max(0,Number(sourceState.loanBalance)||0),available=Math.max(0,max-balance);
   const rate=Math.max(1.5,Math.min(12.5,Number(sourceState.loanRate)||1.5));
@@ -2461,6 +2454,13 @@ window.LMcafeVisualSystem = VisualSystem;
 // 唯一抽卡區｜抽卡池、機率、條件與執行流程
 // 所有抽卡池、機率、條件、結果與執行流程集中於此。
 // ============================================================
+function getBeanGachaDisplayData(sourceState=visualState){
+  const pool=window.LMcafeAPI?.['07']?.['抽獎池管理/取得抽獎池']?.(sourceState.level)??[];
+  const getIdName=window.LMcafeAPI?.['02']?.['ID 查詢/查詢 ID 名稱'];
+  const displayPool=pool.map(item=>({grade:getIdName?.(item.id)||BEAN_GRADE[item.id]||'',rate:item.rate})).filter(item=>item.grade);
+  const drawPending=window.LMcafeGachaSystem?.isBeanDrawPending?.()??false;
+  return {money:sourceState.money,gl:sourceState.gl||0,level:sourceState.level,displayPool,unavailable:!displayPool.length,drawOneDisabled:!displayPool.length||sourceState.money<5000||(sourceState.gl||0)<5||drawPending,drawTenDisabled:!displayPool.length||sourceState.money<50000||(sourceState.gl||0)<50||drawPending};
+}
 let beanDrawPending = false;
 let mealDrawPending = false;
 let beanScanRun = 0;
