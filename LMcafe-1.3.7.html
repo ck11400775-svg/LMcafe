@@ -492,7 +492,7 @@ const ScheduleSystem = (() => {
   function scheduleGameFrames(delayFrames, callback) {
     if (!Number.isInteger(delayFrames) || delayFrames < 0) throw new TypeError('排程延遲必須是非負 Frame 整數');
     if (typeof callback !== 'function') throw new TypeError('排程回呼必須是函式');
-    const task = {dueFrame: gameFrame + delayFrames, remainingFrames: delayFrames, callback, status: 'pending'};
+    const task = {dueFrame: gameFrame + delayFrames, callback, status: 'pending'};
     gameTasks.add(task);
     return task;
   }
@@ -502,18 +502,6 @@ const ScheduleSystem = (() => {
     task.status = status;
     if (['completed', 'cancelled', 'failed'].includes(status)) gameTasks.delete(task);
     return true;
-  }
-
-  function pauseGameSchedule(task) {
-    if (!gameTasks.has(task) || task.status !== 'pending') return false;
-    task.remainingFrames = Math.max(0, task.dueFrame - gameFrame);
-    return setGameTaskStatus(task, 'paused');
-  }
-
-  function resumeGameSchedule(task) {
-    if (!gameTasks.has(task) || task.status !== 'paused') return false;
-    task.dueFrame = gameFrame + task.remainingFrames;
-    return setGameTaskStatus(task, 'pending');
   }
 
   function cancelGameSchedule(task) {
@@ -551,7 +539,7 @@ const ScheduleSystem = (() => {
 
   return Object.freeze({
     scheduleReal, cancelReal, delayReal,
-    scheduleGameFrames, pauseGameSchedule, resumeGameSchedule, cancelGameSchedule,
+    scheduleGameFrames, cancelGameSchedule,
     hasPendingGameSchedules, runGameSchedules, startFrameTrigger
   });
 })();
@@ -3081,8 +3069,6 @@ window.LMcafeGachaSystem=GachaSystem;
         "實際時間排程/取消排程": window.LMcafeScheduleSystem.cancelReal,
         "實際時間排程/延遲實際時間": window.LMcafeScheduleSystem.delayReal,
         "遊戲時間排程/建立排程": window.LMcafeScheduleSystem.scheduleGameFrames,
-        "遊戲時間排程/暫停排程": window.LMcafeScheduleSystem.pauseGameSchedule,
-        "遊戲時間排程/恢復排程": window.LMcafeScheduleSystem.resumeGameSchedule,
         "遊戲時間排程/取消排程": window.LMcafeScheduleSystem.cancelGameSchedule,
         "遊戲時間排程/檢查待執行排程": window.LMcafeScheduleSystem.hasPendingGameSchedules
       }),
