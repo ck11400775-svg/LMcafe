@@ -711,6 +711,13 @@ function openingEvent() {
 const notify = DisplayText.notify;
 const record = DisplayText.record;
 // ============================================================
+function openSpecialCustomerProduction(id){
+  const customer=state.specialCustomer;
+  if(!customer||customer.id!==id)return false;
+  VisualSystem.dispatch('feature.show','customProductionView','客製化製作');
+  return true;
+}
+
 // 唯一咖啡豆解鎖區
 // ============================================================
 function normalizeBeanUnlockState(target=state){
@@ -862,6 +869,28 @@ function setMealLimit(value){
   notify(`用餐時間上限已設定為 ${limit} 秒。`);
 }
 // ============================================================
+function getShopDisplayData(category,sourceState=visualState){
+  if(!category)category=$('shopProducts')?.dataset.category||'';
+  const rows=[];
+  const add=(title,detail,price,button,disabled=false,action='',actionKey=null)=>rows.push({title,detail,price,button,disabled,action,actionKey});
+  if(category==='beans'){
+    BEANS.filter(grade=>!BEAN_GACHA_ONLY.has(grade)).forEach(grade=>{
+      const unlock=LevelSystem.required('bean',grade),locked=!LevelSystem.isUnlocked('bean',grade,sourceState.level);
+      add(`${BEAN_GRADE[grade]} 級咖啡豆 · 1 kg`,`${locked?`LV${unlock} 解鎖`:'已解鎖'}`,`${moneyText(BEAN_COST[grade])} LT`,locked?`需 LV${unlock}`:'購買',locked,'bean',grade);
+    });
+  }else if(category==='cups'){
+    CUP_IDS.forEach(size=>{const locked=!LevelSystem.isUnlocked('cup',size,sourceState.level);add(`${CUP_LABEL[size]}外帶杯 · 100 個`,locked?`LV${LevelSystem.required('cup',size)} 解鎖`:'已解鎖',`${moneyText(CUP_COST[size])} LT`,locked?`需 LV${LevelSystem.required('cup',size)}`:'購買',locked,'cup',size);});
+  }else if(category==='milk'){
+    Object.entries(MILK_INFO).forEach(([type,item])=>{add(`${item.label} · ${item.pack}${item.unit}`,'LV5 開放',`${moneyText(item.cost)} LT`,!LevelSystem.isUnlocked('milk',null,sourceState.level)?'需 LV5':'購買',!LevelSystem.isUnlocked('milk',null,sourceState.level),'milk',type);});
+  }else if(category==='decor'){
+    add('店內裝潢','功能暫停中','','未開放',false,'decor');
+  }else if(category==='robot'){
+    const locked=!LevelSystem.isUnlocked('robot',null,sourceState.level);
+    add('基礎機器人',locked?`LV${LevelSystem.required('robot')} 解鎖`:'可購買並自動服務顧客',`${moneyText(ROBOT_BASE_COST)} LT`,locked?'需 LV20':'購買',locked||sourceState.money<ROBOT_BASE_COST,'robot');
+  }
+  return {category,rows};
+}
+
 // 唯一顧客區｜顧客查詢、外帶與內用
 // ============================================================
 function findCustomer(id, channel=null, waitingOnly=false){
@@ -1629,6 +1658,14 @@ function applyLoan(amount){
   return true;
 }
 // 22 區使用的唯讀顯示資料快照；視覺程式不直接讀寫即時遊戲狀態。
+function getLoanDisplayData(sourceState=visualState){
+  const max=loanCreditLimit(sourceState),balance=Math.max(0,Number(sourceState.loanBalance)||0),available=Math.max(0,max-balance);
+  const rate=Math.max(1.5,Math.min(12.5,Number(sourceState.loanRate)||1.5));
+  let estimate='尚無貸款',estimateHint='申請貸款後會顯示下一期預估收取金額。';
+  if(balance>0){const withInterest=balance+integerize(balance*.05 + Number.EPSILON),payment=Math.min(withInterest,Math.max(1,integerize(withInterest*rate/100 + Number.EPSILON)));estimate=moneyText(payment,' LT');estimateHint=`以目前債務計算：計息後 ${moneyText(withInterest,' LT')}，本期比例 ${rate.toFixed(1)}%。`;}
+  return {max,balance,available,hint:available>0?`目前 LV${sourceState.level} 可再申請 ${moneyText(available,' LT')}。`:'目前已用滿此等級可貸額度。',canApply:available>=1,rate,estimate,estimateHint};
+}
+
 // 唯一視覺區
 let visualState = null;
 let visualDispatchDepth = 0;
@@ -1682,34 +1719,6 @@ function createVisualSnapshot(){
       nextBillDay:state.utilityDue
     }
   };
-}
-function getShopDisplayData(category,sourceState=visualState){
-  if(!category)category=$('shopProducts')?.dataset.category||'';
-  const rows=[];
-  const add=(title,detail,price,button,disabled=false,action='',actionKey=null)=>rows.push({title,detail,price,button,disabled,action,actionKey});
-  if(category==='beans'){
-    BEANS.filter(grade=>!BEAN_GACHA_ONLY.has(grade)).forEach(grade=>{
-      const unlock=LevelSystem.required('bean',grade),locked=!LevelSystem.isUnlocked('bean',grade,sourceState.level);
-      add(`${BEAN_GRADE[grade]} 級咖啡豆 · 1 kg`,`${locked?`LV${unlock} 解鎖`:'已解鎖'}`,`${moneyText(BEAN_COST[grade])} LT`,locked?`需 LV${unlock}`:'購買',locked,'bean',grade);
-    });
-  }else if(category==='cups'){
-    CUP_IDS.forEach(size=>{const locked=!LevelSystem.isUnlocked('cup',size,sourceState.level);add(`${CUP_LABEL[size]}外帶杯 · 100 個`,locked?`LV${LevelSystem.required('cup',size)} 解鎖`:'已解鎖',`${moneyText(CUP_COST[size])} LT`,locked?`需 LV${LevelSystem.required('cup',size)}`:'購買',locked,'cup',size);});
-  }else if(category==='milk'){
-    Object.entries(MILK_INFO).forEach(([type,item])=>{add(`${item.label} · ${item.pack}${item.unit}`,'LV5 開放',`${moneyText(item.cost)} LT`,!LevelSystem.isUnlocked('milk',null,sourceState.level)?'需 LV5':'購買',!LevelSystem.isUnlocked('milk',null,sourceState.level),'milk',type);});
-  }else if(category==='decor'){
-    add('店內裝潢','功能暫停中','','未開放',false,'decor');
-  }else if(category==='robot'){
-    const locked=!LevelSystem.isUnlocked('robot',null,sourceState.level);
-    add('基礎機器人',locked?`LV${LevelSystem.required('robot')} 解鎖`:'可購買並自動服務顧客',`${moneyText(ROBOT_BASE_COST)} LT`,locked?'需 LV20':'購買',locked||sourceState.money<ROBOT_BASE_COST,'robot');
-  }
-  return {category,rows};
-}
-function getLoanDisplayData(sourceState=visualState){
-  const max=loanCreditLimit(sourceState),balance=Math.max(0,Number(sourceState.loanBalance)||0),available=Math.max(0,max-balance);
-  const rate=Math.max(1.5,Math.min(12.5,Number(sourceState.loanRate)||1.5));
-  let estimate='尚無貸款',estimateHint='申請貸款後會顯示下一期預估收取金額。';
-  if(balance>0){const withInterest=balance+integerize(balance*.05 + Number.EPSILON),payment=Math.min(withInterest,Math.max(1,integerize(withInterest*rate/100 + Number.EPSILON)));estimate=moneyText(payment,' LT');estimateHint=`以目前債務計算：計息後 ${moneyText(withInterest,' LT')}，本期比例 ${rate.toFixed(1)}%。`;}
-  return {max,balance,available,hint:available>0?`目前 LV${sourceState.level} 可再申請 ${moneyText(available,' LT')}。`:'目前已用滿此等級可貸額度。',canApply:available>=1,rate,estimate,estimateHint};
 }
 function getVisualEnvironment(){
   const width=Math.max(0,Number(window.innerWidth)||0),height=Math.max(0,Number(window.innerHeight)||0);
@@ -1914,12 +1923,6 @@ function drawEventDialog(id=visualState?.eventId){
     host.append(button);
   });
   VisualSystem.dispatch('dialog.open','eventDialog');
-  return true;
-}
-function openSpecialCustomerProduction(id){
-  const customer=state.specialCustomer;
-  if(!customer||customer.id!==id)return false;
-  VisualSystem.dispatch('feature.show','customProductionView','客製化製作');
   return true;
 }
 function drawRobotManagement(){
