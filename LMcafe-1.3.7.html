@@ -1199,9 +1199,6 @@ function tickIndoorArrival(){
     indoorArrivalTask=ScheduleSystem.scheduleGameFrames(1,tickIndoorArrival);
   }
 }
-function scheduleIndoorMeal(customer){
-  ScheduleSystem.scheduleGameFrames(1,()=>tickIndoorMeal(customer.id));
-}
 function tickIndoorMeal(customerId){
   const customer=findCustomer(customerId,'indoor');
   if(!customer||customer.status!=='eating')return;
@@ -1273,7 +1270,7 @@ function makeCustomerCoffee(customerId, beanGrade=state.selectedBean, milkType=s
     customer.status='eating';
     const maxMealFrames=Math.max(50,Math.min(120,Number(state.mealLimit)||30)*10);customer.mealDurationFrames=50+integerize(Math.random()*Math.max(1,maxMealFrames-50),'floor');
     customer.mealPenaltyTicks=0;customer.mealStartedFrame=TimeSystem.getGameFrame();
-    scheduleIndoorMeal(customer);
+    ScheduleSystem.scheduleGameFrames(1,()=>tickIndoorMeal(customer.id));
   }else{
     state.customers=state.customers.filter(item=>item!==customer);
   }
@@ -2114,11 +2111,6 @@ function drawNoticeLog(){
   });
 }
 
-function getCustomerMaterialShortage(customer){
-  const plan=getCustomerCoffeePlan(customer,visualState.selectedBean,visualState.selectedMilk,visualState);
-  return plan.missingMaterials||[];
-}
-
 function drawCustomerList(channel,hostId){
   const box=$(hostId);if(!box)return;box.replaceChildren();
   const isIndoor=channel==='indoor',now=visualState.gameFrame;
@@ -2139,7 +2131,8 @@ function drawCustomerList(channel,hostId){
       const progress=createVisualNode('div','progress customer-progress');
       const fill=createVisualNode('div');setProgressWidth(fill,isIndoor?0:wait.percent);progress.append(fill);
       card.append(label,progress);
-      const missing=getCustomerMaterialShortage(customer);
+      const plan=getCustomerCoffeePlan(customer,visualState.selectedBean,visualState.selectedMilk,visualState);
+      const missing=plan.missingMaterials||[];
       const button=createVisualNode('button','primary customer-action-button'+(missing.length?' material-shortage':''),missing.length?'缺少：'+missing.join('、'):'製作此顧客需求');
       button.dataset.customerAction=String(customer.id);
       button.disabled=missing.length>0;
