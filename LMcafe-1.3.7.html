@@ -663,16 +663,13 @@ const PromptQueue = (() => {
   const queue = [];
   let active = false;
   function showNext(){
-    if(!queue.length){
-      active=false;
-      VisualSystem.dispatch('centerPrompt.clear');
-      return;
-    }
+    if(!queue.length){active=false;return;}
     active=true;
     VisualSystem.dispatch('centerPrompt',queue.shift());
     ScheduleSystem.scheduleReal(()=>{
       VisualSystem.dispatch('centerPrompt.clear');
-      showNext();
+      if(queue.length)showNext();
+      else active=false;
     },1500);
   }
   function enqueue(message){
