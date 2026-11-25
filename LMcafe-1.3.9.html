@@ -477,11 +477,6 @@ const LevelSystem = Object.freeze({
 });
 const DEFAULT_BEANS = Object.fromEntries(BEANS.map(id=>[id,0]));
 const DEFAULT_CUPS = Object.fromEntries(CUP_IDS.map(id=>[id,0]));
-function resolveCatalogId(definitions,value,aliases=[]){
-  return definitions.find(item=>item.id===value||aliases.some(key=>item[key]===value))?.id||null;
-}
-function beanId(value){return resolveCatalogId(BEAN_DEFS,value,['grade']);}
-function cupId(value){return resolveCatalogId(CUP_DEFS,value,['key','label']);}
 function normalizeBeanCupState(target){
   const oldBeans=target.beans||{}; const oldCups=target.cups||{};
   target.beans=Object.fromEntries(BEANS.map(id=>[id,Number(oldBeans[id]??oldBeans[BEAN_GRADE[id]]??0)||0]));
@@ -501,12 +496,7 @@ const MILK_INFO = {
   uht:{id:'MILK-3',label:'保久乳',pack:1000,unit:'ml',use:50,cost:70}
 };
 // Debug/輸入防護上限：純技術安全限制，不代表遊戲平衡數值。
-const INPUT_LIMITS = { money:1_000_000_000, ep:1_000_000_000, day:1_000_000, bean:1_000_000_000, cup:1_000_000, stock:1_000_000_000, count:1_000_000 };
 const EXPANSION_COSTS = Object.freeze([1000000,2000000,4000000,8000000,16000000,32000000,64000000]);
-function getExpansionDetails(count=state.expansionCount){
-  const index=Math.max(0,Math.min(EXPANSION_COSTS.length,integerize(Number(count)||0,'floor')));
-  return {count:index,cost:EXPANSION_COSTS[index]??null,seats:index===0?15:20,rate:index===0?1:0.8*Math.pow(0.9,index-1),rateFactor:index===0?0.8:0.9,maxed:index>=EXPANSION_COSTS.length};
-}
 const state = {
   money:10000, gl:0, energy:30, energyInfinite:false, maxEnergy:30, ep:0, level:0, day:1, weather:null, weatherDay:0,
   beans:{...DEFAULT_BEANS}, mealIngredients:{bread:0,flour:0,rice:0,chicken:0,egg:0,milk:0,butter:0,cream:0,yogurt:0,lettuce:0,tomato:0,cucumber:0,onion:0,potato:0,fruit:0,ketchup:0,jam:0,sauce:0,sugar:0}, cups:{...DEFAULT_CUPS},
@@ -520,29 +510,6 @@ const state = {
 };
 let changingDay = false;
 let eventId = 0;
-const integerize = (value, mode='round') => {
-  const number = Number(value);
-  if (!Number.isFinite(number)) return 0;
-  if (mode === 'floor') return Math.floor(number);
-  if (mode === 'ceil') return Math.ceil(number);
-  return Math.round(number);
-};
-const moneyText = (n, unit='') => `${integerize((Number(n) + Number.EPSILON) || 0).toLocaleString('en-US')}${unit}`;
-const threshold = level => 50 * level * (level + 1);
-const levelFor = ep => {
-  let low = 0, high = 100000;
-  while (low < high) {
-    const mid = integerize((low + high) / 2,'ceil');
-    if (ep >= threshold(mid)) low = mid; else high = mid - 1;
-  }
-  return low;
-};
-const energyLimit = level => 30 + 10 * integerize(level / 5,'floor');
-const price = size => {
-  size=cupId(size)||size; const base = CUP_PRICE[size];
-  return base === undefined ? null : base * (size === 'CUP-0' ? state.discount : 1);
-};
-
 // ============================================================
 // 唯一顯示提示文字區
 // ============================================================
@@ -615,6 +582,28 @@ DisplayText.applyStatic(document);
 // ============================================================
 // 02. 核心計算：風評、等待與通知
 // ============================================================
+const integerize = (value, mode='round') => {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 0;
+  if (mode === 'floor') return Math.floor(number);
+  if (mode === 'ceil') return Math.ceil(number);
+  return Math.round(number);
+};
+const moneyText = (n, unit='') => `${integerize((Number(n) + Number.EPSILON) || 0).toLocaleString('en-US')}${unit}`;
+const threshold = level => 50 * level * (level + 1);
+const levelFor = ep => {
+  let low = 0, high = 100000;
+  while (low < high) {
+    const mid = integerize((low + high) / 2,'ceil');
+    if (ep >= threshold(mid)) low = mid; else high = mid - 1;
+  }
+  return low;
+};
+const energyLimit = level => 30 + 10 * integerize(level / 5,'floor');
+const price = size => {
+  size=cupId(size)||size; const base = CUP_PRICE[size];
+  return base === undefined ? null : base * (size === 'CUP-0' ? state.discount : 1);
+};
 function longRepGrade(value) {
   const n = Number(value) || 0;
   if (n <= -41) return 'F'; if (n <= -31) return 'E'; if (n <= -21) return 'D';
@@ -795,6 +784,10 @@ function updateLevel(previousLevel = state.level, grantLevelRewards = true, sile
 // ============================================================
 // 08. 商店統一區｜商品購買與補貨
 // ============================================================
+function getExpansionDetails(count=state.expansionCount){
+  const index=Math.max(0,Math.min(EXPANSION_COSTS.length,integerize(Number(count)||0,'floor')));
+  return {count:index,cost:EXPANSION_COSTS[index]??null,seats:index===0?15:20,rate:index===0?1:0.8*Math.pow(0.9,index-1),rateFactor:index===0?0.8:0.9,maxed:index>=EXPANSION_COSTS.length};
+}
 function purchase(cost, description, apply) {
   if (state.money < cost) return notify('財富值不足。');
   state.money -= cost;
@@ -1311,6 +1304,7 @@ function selectAchievement(id){
 // ============================================================
 // 15. Debug 專區｜所有 Debug 指令集中於此區
 // ============================================================
+const INPUT_LIMITS = { money:1_000_000_000, ep:1_000_000_000, day:1_000_000, bean:1_000_000_000, cup:1_000_000, stock:1_000_000_000, count:1_000_000 };
 const DebugSystem = (() => {
   const help = 'all max · money N|max · gl N|max · lv N|max · ep N|max · day N|max · energy N|max|inf · bean 豆級 N|max · cup 杯型 N|max';
   function write(message) {
@@ -2598,6 +2592,12 @@ window.LMcafeGachaSystem=GachaSystem;
      * 已有序號不重新編排：CUP-0～CUP-3、BEAN-0～BEAN-13、
      * ING-0～ING-18、MENU-0～MENU-2。
      */
+    // 唯一目錄 ID 映射
+function resolveCatalogId(definitions,value,aliases=[]){
+  return definitions.find(item=>item.id===value||aliases.some(key=>item[key]===value))?.id||null;
+}
+function beanId(value){return resolveCatalogId(BEAN_DEFS,value,['grade']);}
+function cupId(value){return resolveCatalogId(CUP_DEFS,value,['key','label']);}
     const idRecords = new Map();
     const issuedIds = new Set();
     const generatedIds = new Set();
@@ -2781,7 +2781,6 @@ TimeSystem.start();
 // 21. 音效與音樂統一區
 // ============================================================
 (function(){
- const integerize=window.LMcafeAPI['01']['數值計算/整數化'];
  const KEY='lmcafe_audio_settings_v2';
  let saved={};try{saved=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(_error){}
  let musicVol=Number.isFinite(saved.musicVol)?saved.musicVol:.28;
