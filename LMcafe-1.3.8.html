@@ -2065,7 +2065,7 @@ function drawGameView() {
     const unavailable = !item;
     button.disabled = unavailable;
     button.classList.toggle('unavailable', unavailable);
-    if (item) DisplayText.setText(button, item.temporaryPrice ? '購買（臨時價格）' : '購買');
+    if (item) DisplayText.setText(button, '購買');
   });
   document.querySelectorAll('[data-bean]').forEach(button => {
     const id=beanId(button.dataset.bean); button.classList.toggle('primary', id === visualState.selectedBean);
