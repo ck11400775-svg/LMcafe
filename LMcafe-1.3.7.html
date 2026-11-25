@@ -1739,38 +1739,60 @@ function bindGameEvents() {
   // 界面改變流程 2.1：所有頁面返回統一由此處分派。
   function navigateInterface(action,page){
     const close=id=>VisualSystem.dispatch('dialog.close',id);
-    if(page==='soundDialog'){
-      if(action==='home'){
-        close(page);
-        if(currentScreen==='L0')enterGameScreen();
-        return;
+
+    // Home 永遠回到 L1；若目前位於 L0，則先進入遊戲。
+    if(action==='home'){
+      close(page);
+      if(page==='beanDrawResultDialog'){
+        close('beanGachaDialog');
+        close('gachaMenuDialog');
       }
+      if(currentScreen==='L0')enterGameScreen();
+      return;
+    }
+
+    if(page==='soundDialog'){
       close(page);
       if(soundDialogOrigin==='L0')returnToMainMenu();
       return;
     }
     if(page==='featureDialog'){
-      if(action==='home'){close(page);return;}
-      if(!$('customProductionView').classList.contains('hidden')){VisualSystem.dispatch('feature.show','productionTakeoutView','製作區');return;}
+      if(!$('customProductionView').classList.contains('hidden')){
+        VisualSystem.dispatch('feature.show','productionTakeoutView','製作區');
+        return;
+      }
       const computerView=$('controlComputerView');
       if(computerView&&!computerView.classList.contains('hidden')){
-        if(!$('computerPartDetailView').classList.contains('hidden')){VisualSystem.dispatch('controlComputer');return;}
-        if(!$('computerBoardView').classList.contains('hidden')){VisualSystem.dispatch('feature.show','smartControlView','店面智控');return;}
+        if(!$('computerPartDetailView').classList.contains('hidden')){
+          VisualSystem.dispatch('controlComputer');
+          return;
+        }
+        if(!$('computerBoardView').classList.contains('hidden')){
+          VisualSystem.dispatch('feature.show','smartControlView','店面智控');
+          return;
+        }
       }
-      if(!$('smartControlView').classList.contains('hidden')){VisualSystem.dispatch('feature.show','powerView','電力區');return;}
-      close(page);return;
+      if(!$('smartControlView').classList.contains('hidden')){
+        VisualSystem.dispatch('feature.show','powerView','電力區');
+        return;
+      }
+      close(page);
+      return;
     }
     if(page==='shopDialog'){
-      if(action==='home'){close(page);return;}
       const productView=$('shopProductView');
-      if(productView&&!productView.classList.contains('hidden'))VisualSystem.dispatch('shop.view','back');else close(page);
+      if(productView&&!productView.classList.contains('hidden'))VisualSystem.dispatch('shop.view','back');
+      else close(page);
       return;
     }
     if(page==='beanGachaDialog'||page==='mealIngredientGachaDialog'){
-      close(page);if(action==='back')VisualSystem.dispatch('dialog.open','gachaMenuDialog');return;
+      close(page);
+      if(action==='back')VisualSystem.dispatch('dialog.open','gachaMenuDialog');
+      return;
     }
     if(page==='beanDrawResultDialog'){
-      close(page);if(action==='home'){close('beanGachaDialog');close('gachaMenuDialog');}return;
+      close(page);
+      return;
     }
     close(page);
   }
