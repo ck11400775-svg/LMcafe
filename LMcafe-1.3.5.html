@@ -61,6 +61,8 @@ body:not(.screen-l0) .l0-menu{display:none;}
 .pause-bean-card[aria-pressed="true"]{border-color:var(--neon-red)!important;background:#250b15!important;box-shadow:0 0 3px #fff,0 0 8px var(--neon-red),0 0 18px #ff365f99,inset 0 0 10px #ff365f33!important;}
 .pause-bean-card[aria-pressed="true"]:before{background:linear-gradient(135deg,#ffdce3 0%,#ff637c 38%,#8d102e 100%);box-shadow:0 0 3px #fff,0 0 8px var(--neon-red),0 0 15px #ff365f99;}
 .pause-bean-card[aria-pressed="true"]:after{box-shadow:0 0 3px #fff,0 0 6px var(--neon-red);}
+#togglePause.pause-bean-card{border-color:var(--neon-green)!important;color:transparent!important;background:#071a13!important;box-shadow:0 0 3px #fff,0 0 8px var(--neon-green),0 0 18px #42ff8a88,inset 0 0 10px #42ff8a33!important;}
+#togglePause.pause-bean-card[aria-pressed="true"]{border-color:var(--neon-red)!important;color:transparent!important;background:#250b15!important;box-shadow:0 0 3px #fff,0 0 8px var(--neon-red),0 0 18px #ff365f99,inset 0 0 10px #ff365f33!important;}
 .center-prompt{position:fixed;top:16px;left:50%;z-index:2147483002;transform:translate(-50%,-18px);width:max-content;max-width:min(680px,calc(100vw - 28px));padding:11px 20px;border:1px solid #a8faff;border-radius:3px;background:#061927f2;color:#efffff;text-align:center;font-size:14px;font-weight:850;letter-spacing:.04em;opacity:0;visibility:hidden;pointer-events:none;text-shadow:0 0 4px #65f7ff;box-shadow:0 0 3px #fff,0 0 8px #65f7ff,0 0 20px #27dfff88,inset 0 0 12px #65f7ff22;transition:opacity .12s ease,transform .12s ease,visibility .12s;}
 .center-prompt.visible{opacity:1;visibility:visible;transform:translate(-50%,0);}
 .main-entry,.stat,.panel,.feature-stat,.device-section,.inventory-card,.notice-item,.customer-card,.shop-category,.shop-product{position:relative;border-color:#3c9cae!important;box-shadow:0 0 0 1px #42e9f344,0 0 5px #3be9f055,0 0 13px #23cde833,inset 0 0 9px #23cde811!important;}
@@ -347,6 +349,7 @@ let soundDialogOrigin = 'L0';
 function enterGameScreen(){
   currentScreen='L1';
   document.body.classList.remove('screen-l0');
+  promoteStatusBar();
   if(timestop)setTimeStop(false);
   activateDayEvent();
   openingEvent();
@@ -354,6 +357,8 @@ function enterGameScreen(){
 function returnToMainMenu(){
   currentScreen='L0';
   document.body.classList.add('screen-l0');
+  const bar=document.querySelector('.top-status-bar');
+  if(bar&&bar.matches(':popover-open'))bar.hidePopover();
   if(!timestop)setTimeStop(true);
 }
 
