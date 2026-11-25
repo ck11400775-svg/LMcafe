@@ -794,6 +794,25 @@ function updateLevel(previousLevel = state.level, grantLevelRewards = true, sile
 // ============================================================
 // 唯一商店區｜商品購買與補貨
 // ============================================================
+function buyStock(type,key){
+  let cost,description,apply;
+  if(type==='bean'){
+    key=beanId(key);if(!key||!(key in BEAN_COST))return false;
+    const unlock=LevelSystem.required('bean',key);
+    if(!LevelSystem.isUnlocked('bean',key))return notify(`${BEAN_GRADE[key]} 級咖啡豆需 LV${unlock} 解鎖。`);
+    if(BEAN_GACHA_ONLY.has(key))return notify(`${BEAN_GRADE[key]} 級咖啡豆為抽卡限定，不能直接購買。`);
+    cost=BEAN_COST[key];description=`${BEAN_GRADE[key]} 級咖啡豆 1kg`;apply=()=>state.beans[key]+=1000;
+  }else if(type==='cup'){
+    key=cupId(key);if(!key||!(key in CUP_COST))return false;
+    if(!LevelSystem.isUnlocked('cup',key))return notify(`${CUP_LABEL[key]}需 LV${LevelSystem.required('cup',key)} 解鎖。`);
+    cost=CUP_COST[key];description=`${CUP_LABEL[key]}外帶杯 100 個`;apply=()=>state.cups[key]+=100;
+  }else if(type==='milk'){
+    if(!LevelSystem.isUnlocked('milk'))return notify('牛奶原料需 LV5 解鎖。');
+    const item=MILK_INFO[key];if(!item)return false;
+    cost=item.cost;description=`${item.label} ${item.pack}${item.unit}`;apply=()=>state.milkStock[key]+=item.pack;
+  }else return false;
+  return purchase(cost,description,apply);
+}
 function getExpansionDetails(count=state.expansionCount){
   const index=Math.max(0,Math.min(EXPANSION_COSTS.length,integerize(Number(count)||0,'floor')));
   return {count:index,cost:EXPANSION_COSTS[index]??null,seats:index===0?15:20,rate:index===0?1:0.8*Math.pow(0.9,index-1),rateFactor:index===0?0.8:0.9,maxed:index>=EXPANSION_COSTS.length};
@@ -806,26 +825,6 @@ function purchase(cost, description, apply) {
   record(`採購：${description}（${moneyText(cost)} LT）。`);
   notify('購買完成。');
   VisualSystem.dispatch('game');
-}
-function buyBean(grade) {
-  grade=beanId(grade); if(!grade || !(grade in BEAN_COST)) return;
-  const unlock = LevelSystem.required('bean',grade);
-  if (!LevelSystem.isUnlocked('bean',grade)) return notify(`${BEAN_GRADE[grade]} 級咖啡豆需 LV${unlock} 解鎖。`);
-  if (BEAN_GACHA_ONLY.has(grade)) return notify(`${BEAN_GRADE[grade]} 級咖啡豆為抽卡限定，不能直接購買。`); purchase(BEAN_COST[grade], `${BEAN_GRADE[grade]} 級咖啡豆 1kg`,
-    () => state.beans[grade] += 1000);
-}
-function buyCups(size) {
-  size=cupId(size); if (!size || !(size in CUP_COST)) return;
-  if (!LevelSystem.isUnlocked('cup',size)) return notify(`${CUP_LABEL[size]}需 LV${LevelSystem.required('cup',size)} 解鎖。`);
-  purchase(CUP_COST[size], `${CUP_LABEL[size]}外帶杯 100 個`,
-    () => state.cups[size] += 100);
-}
-function buyMilk(type) {
-  if(!LevelSystem.isUnlocked('milk'))return notify('牛奶原料需 LV5 解鎖。');
-  const item = MILK_INFO[type];
-  if (!item) return;
-  purchase(item.cost, `${item.label} ${item.pack}${item.unit}`,
-    () => state.milkStock[type] += item.pack);
 }
 function expandShop(){
   if(!LevelSystem.isUnlocked('expansion'))return notify('擴店功能需 LV5 解鎖。');
@@ -1587,9 +1586,7 @@ function bindGameEvents() {
     if(button.dataset.computerSlot){handleComputerSlot(button.dataset.computerSlot);return;}
     if(button.dataset.shopAction){
       const key=button.dataset.shopActionKey;
-      if(button.dataset.shopAction==='bean')buyBean(key);
-      else if(button.dataset.shopAction==='cup')buyCups(key);
-      else if(button.dataset.shopAction==='milk')buyMilk(key);
+      if(['bean','cup','milk'].includes(button.dataset.shopAction))buyStock(button.dataset.shopAction,key);
       else if(button.dataset.shopAction==='decor')notify('裝潢功能目前尚未開放。');
       else if(button.dataset.shopAction==='robot')buyRobot();
     }
@@ -2669,8 +2666,7 @@ window.LMcafeGachaSystem=GachaSystem;
     const getWeather = () => ({weather:state.weather,day:state.weatherDay});
     const getHardware = () => ({devices:{...state.devices},controlComputer:INITIAL_CONTROL_COMPUTER.map(part=>({...part}))});
     const getElectricity = () => ({dailyUsage:getDailyElectricityUsage(),dailyCost:getDailyElectricityCost(),periodUsage:state.electricityPeriodUsage,periodCost:state.electricityPeriodCost,totalUsage:state.electricityTotalUsage,totalCost:state.electricityTotalCost,nextBillDay:state.utilityDue});
-    const buyStock = (type,key) => type==='bean' ? buyBean(key) : type==='cup' ? buyCups(key) : type==='milk' ? buyMilk(key) : false;
-    const LMcafeAPI = Object.freeze({
+        const LMcafeAPI = Object.freeze({
       "01": Object.freeze({
         "遊戲狀態管理/取得遊戲狀態": window.LMcafeTimeSystem.getState,
         "Frame 時間管理/取得目前 Frame": window.LMcafeTimeSystem.getGameFrame,
