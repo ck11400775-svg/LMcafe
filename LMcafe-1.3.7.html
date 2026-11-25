@@ -3181,15 +3181,15 @@ TimeSystem.start();
    return ctx;
   }catch(_error){ctx=null;return null;}
  }
- function renderTone(duration,volume,bus,waveform,attack,phaseAt,delay=0){
+ function renderTone(duration,volume,bus,waveform,attackSamples,phaseAt,delay=0){
   if(!ctx||!bus)return false;
   const length=Math.max(1,integerize(SAMPLE_RATE*duration,'floor'));
   const buffer=ctx.createBuffer(1,length,SAMPLE_RATE),samples=buffer.getChannelData(0);
-  const attackSamples=Math.max(1,SAMPLE_RATE*attack);
+  const safeAttackSamples=Math.max(1,Number(attackSamples)||1);
   for(let i=0;i<length;i++){
    const phase=phaseAt(i,length);
    const wave=waveform==='triangle'?(2/Math.PI)*Math.asin(Math.sin(phase)):Math.sin(phase);
-   const envelope=Math.min(1,i/attackSamples)*Math.max(0,1-i/length);
+   const envelope=Math.min(1,i/safeAttackSamples)*Math.max(0,1-i/length);
    samples[i]=wave*volume*envelope;
   }
   const source=ctx.createBufferSource();source.buffer=buffer;source.connect(bus);source.start(ctx.currentTime+Math.max(0,delay));
@@ -3199,10 +3199,10 @@ TimeSystem.start();
   if(!ctx||!musicBus)return;
   const n=step%scale.length;
   const fixedPhase=frequency=>(i)=>2*Math.PI*frequency*i/SAMPLE_RATE;
-  renderTone(2.1,.055,musicBus,'sine',.35,fixedPhase(scale[n]));
-  if(n%2===0)renderTone(1.35,.012,musicBus,'triangle',.18,fixedPhase(scale[n]*2),.08);
-  if(n%4===0)renderTone(3.2,.026,musicBus,'sine',.5,fixedPhase(bass[integerize(n/4,'floor')%4]),.12);
-  if(n%4===2)renderTone(1.8,.009,musicBus,'sine',.4,fixedPhase(scale[n]*1.5),.2);
+  renderTone(2.1,.055,musicBus,'sine',Math.max(1,integerize(SAMPLE_RATE*.35,'floor')),fixedPhase(scale[n]));
+  if(n%2===0)renderTone(1.35,.012,musicBus,'triangle',Math.max(1,integerize(SAMPLE_RATE*.18,'floor')),fixedPhase(scale[n]*2),.08);
+  if(n%4===0)renderTone(3.2,.026,musicBus,'sine',Math.max(1,integerize(SAMPLE_RATE*.5,'floor')),fixedPhase(bass[integerize(n/4,'floor')%4]),.12);
+  if(n%4===2)renderTone(1.8,.009,musicBus,'sine',Math.max(1,integerize(SAMPLE_RATE*.4,'floor')),fixedPhase(scale[n]*1.5),.2);
   step++;
  }
  function startMusic(){if(loopTimer!==null||!ctx||ctx.state!=='running')return;musicStep();loopTimer=window.LMcafeScheduleSystem.scheduleReal(musicStep,1450,1450)}
@@ -3223,7 +3223,7 @@ TimeSystem.start();
    const progress=i/length;
    return 2*Math.PI*(params.startFrequency*progress+(params.endFrequency-params.startFrequency)*progress*progress/2)*params.duration;
   };
-  return renderTone(params.duration,BASE_VOLUME,sfxBus,params.waveform,FADE_IN,phaseAt);
+  return renderTone(params.duration,BASE_VOLUME,sfxBus,params.waveform,Math.max(1,SAMPLE_RATE*FADE_IN),phaseAt);
  }
  function playButton(button){
   if(!button||button.disabled)return false;
