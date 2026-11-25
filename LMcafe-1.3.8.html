@@ -1533,10 +1533,8 @@ function bindGameEvents() {
     if(button.disabled)return;
     const navAction=button.dataset.interfaceClose!==undefined?'close':button.dataset.interfaceBack!==undefined?'back':button.dataset.interfaceHome!==undefined?'home':null;
     if(navAction){navigateInterface(navAction,button.dataset.interfaceClose??button.dataset.interfaceBack??button.dataset.interfaceHome);return;}
-    if(!button.disabled){
-      VisualSystem.dispatch('button.feedback',button);
-      window.LMcafeAudioSystem?.playButton(button);
-    }
+    VisualSystem.dispatch('button.feedback',button);
+    window.LMcafeAudioSystem?.playButton(button);
     if(button.id==='applyLoanButton'){
       applyLoan(Number($('loanAmountInput')?.value));
       return;
