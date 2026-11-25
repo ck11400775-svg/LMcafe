@@ -781,8 +781,7 @@ function updateLevel(previousLevel = state.level, grantLevelRewards = true, sile
     }
     if (!silent && newlyUnlockedBeans.length) BeanUnlockSystem.announce(newlyUnlockedBeans);
   }
-  if (LevelSystem.isUnlocked('indoor') && !LevelSystem.isUnlocked('indoor',null,previousLevel)) scheduleIndoorArrival();
-  else if (!LevelSystem.isUnlocked('indoor') && LevelSystem.isUnlocked('indoor',null,previousLevel)) scheduleIndoorArrival();
+  if (LevelSystem.isUnlocked('indoor') !== LevelSystem.isUnlocked('indoor',null,previousLevel)) scheduleIndoorArrival();
   checkAchievementUnlocks(silent);
 }
 // ============================================================
@@ -2562,18 +2561,6 @@ window.LMcafeGachaSystem=GachaSystem;
 // ============================================================
 // 架構登記區：與主程式共用作用域，並在初始化及事件綁定前完成登記。
 // ============================================================
-    /*
-         * 函式清單依照既有 01～13 分類整理；顧客資料與到店流程歸入 03，製作流程歸入 05，機器人接單與工作歸入 06。
-     * 本版建立分類、函式登記及唯一時間流程轉接，不另建時鐘。
-     * N02～N23 的業務邏輯。
-     *
-     * 「對外」函式可由其他系統透過 LMcafeAPI 呼叫。
-     * 「內部」函式只登記於所屬系統內部，不公開。
-     * 「未標示」保留原始分類表未標示的狀態，不自行推定。
-     *
-     * 所有遊戲時間只能由唯一遊戲鐘取得；所有實際時間只能由唯一實際鐘取得。
-     * 100ms 觸發只傳送判斷要求，不得作為時間訊號。
-     */
     const areaNames = Object.freeze({
       "01": "遊戲核心統一區",
       "02": "ID 管理統一區",
@@ -2596,11 +2583,11 @@ window.LMcafeGachaSystem=GachaSystem;
      * ING-0～ING-18、MENU-0～MENU-2。
      */
     // 唯一目錄 ID 映射
-function resolveCatalogId(definitions,value,aliases=[]){
+    function resolveCatalogId(definitions,value,aliases=[]){
   return definitions.find(item=>item.id===value||aliases.some(key=>item[key]===value))?.id||null;
 }
-function beanId(value){return resolveCatalogId(BEAN_DEFS,value,['grade']);}
-function cupId(value){return resolveCatalogId(CUP_DEFS,value,['key','label']);}
+    function beanId(value){return resolveCatalogId(BEAN_DEFS,value,['grade']);}
+    function cupId(value){return resolveCatalogId(CUP_DEFS,value,['key','label']);}
     const idRecords = new Map();
     const issuedIds = new Set();
     const generatedIds = new Set();
