@@ -1483,22 +1483,21 @@ function bindGameEvents() {
       return;
     }
     if(page==='featureDialog'){
-      if(!$('customProductionView').classList.contains('hidden')){
+      if(VisualSystem.dispatch('feature.viewVisible','customProductionView')){
         VisualSystem.dispatch('feature.show','productionTakeoutView','製作區');
         return;
       }
-      const computerView=$('controlComputerView');
-      if(computerView&&!computerView.classList.contains('hidden')){
-        if(!$('computerPartDetailView').classList.contains('hidden')){
+      if(VisualSystem.dispatch('feature.viewVisible','controlComputerView')){
+        if(VisualSystem.dispatch('feature.viewVisible','computerPartDetailView')){
           VisualSystem.dispatch('controlComputer');
           return;
         }
-        if(!$('computerBoardView').classList.contains('hidden')){
+        if(VisualSystem.dispatch('feature.viewVisible','computerBoardView')){
           VisualSystem.dispatch('feature.show','smartControlView','店面智控');
           return;
         }
       }
-      if(!$('smartControlView').classList.contains('hidden')){
+      if(VisualSystem.dispatch('feature.viewVisible','smartControlView')){
         VisualSystem.dispatch('feature.show','powerView','電力區');
         return;
       }
@@ -1506,8 +1505,7 @@ function bindGameEvents() {
       return;
     }
     if(page==='shopDialog'){
-      const productView=$('shopProductView');
-      if(productView&&!productView.classList.contains('hidden'))VisualSystem.dispatch('shop.view','back');
+      if(VisualSystem.dispatch('feature.viewVisible','shopProductView'))VisualSystem.dispatch('shop.view','back');
       else close(page);
       return;
     }
@@ -2313,6 +2311,7 @@ const VisualSystem = Object.freeze({
       case 'mealScan.clear': mealScanRun++;$('mealScanCard')?.classList.remove('scanning');return true;
       case 'mealScan.play': return playMealScan(...args);
       case 'feature.show': return drawFeatureView(...args);
+      case 'feature.viewVisible': { const view=$(String(args[0]||''));return !!view&&!view.classList.contains('hidden'); }
       case 'feature.tab': {
         const titles={productionTakeoutView:'製作區',productionIndoorView:'內用',productionMaterialsView:'原料'};
         return drawFeatureView(args[0],titles[args[0]]||'製作區');
