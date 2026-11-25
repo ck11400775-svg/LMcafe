@@ -662,19 +662,16 @@ let lastPromptAt = 0;
 const PromptQueue = (() => {
   const queue = [];
   let active = false;
-  let scheduledTask = null;
   function showNext(){
     if(!queue.length){
       active=false;
-      scheduledTask=null;
       VisualSystem.dispatch('centerPrompt.clear');
       return;
     }
     active=true;
     VisualSystem.dispatch('centerPrompt',queue.shift());
-    scheduledTask=ScheduleSystem.scheduleReal(()=>{
+    ScheduleSystem.scheduleReal(()=>{
       VisualSystem.dispatch('centerPrompt.clear');
-      scheduledTask=null;
       showNext();
     },1500);
   }
