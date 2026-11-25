@@ -912,6 +912,16 @@ function chooseCustomerCup() {
   }
   return entries[entries.length - 1].size;
 }
+function createCustomer(channel){
+  if(!['takeout','indoor'].includes(channel))return null;
+  const kind=LevelSystem.isUnlocked('milk')&&Math.random()<0.25?'milk':'regular';
+  const size=kind==='milk'?'CUP-0':chooseCustomerCup();
+  const customer={id:state.nextCustomerId++,channel,kind,size,status:'waiting',arrivedFrame:TimeSystem.getGameFrame(),createdSeq:state.nextCustomerSequence++};
+  if(channel==='indoor')Object.assign(customer,{mealDurationFrames:0,mealStartedFrame:0});
+  state.customers.push(customer);
+  record(`${channel==='indoor'?'內用顧客':'顧客'} #${customer.id} 到店，提出${kind==='milk'?'牛奶咖啡':CUP_LABEL[size]+'咖啡'}需求。`);
+  return customer;
+}
 let takeoutDepartureTask = null;
 function scheduleTakeoutDepartureCheck(){
   if(takeoutDepartureTask || !state.customers.some(customer=>customer.channel==='takeout'&&customer.status==='waiting'))return;
@@ -948,11 +958,7 @@ function tickCustomerArrival() {
   }
   customerStartedFrame = 0;
   customerTotalDelayFrames = null;
-  const customerId=state.nextCustomerId++;
-  const kind=LevelSystem.isUnlocked('milk') && Math.random()<0.25?'milk':'regular';
-  const size=kind==='milk'?'CUP-0':chooseCustomerCup();
-  state.customers.push({id:customerId,channel:'takeout',kind,size,status:'waiting',arrivedFrame:TimeSystem.getGameFrame(),createdSeq:state.nextCustomerSequence++});
-  record(`顧客 #${customerId} 到店，提出${kind==='milk'?'牛奶咖啡':CUP_LABEL[size]+'咖啡'}需求。`);
+  createCustomer('takeout');
   VisualSystem.dispatch('customers');
   scheduleTakeoutDepartureCheck();
   ensureRobotWorkScheduled();
@@ -995,11 +1001,7 @@ function tickIndoorArrival(){
   const pct=!available&&indoorElapsedFrames>=indoorTotalFrames-1?99:Math.min(99,indoorElapsedFrames/indoorTotalFrames*100);
   VisualSystem.dispatch('indoorArrivalState',{progress:pct,text:available?`${integerize(Math.max(0,indoorTotalFrames-indoorElapsedFrames)/10,'ceil')} 秒`:'等待座位／內用杯（99%）'});
   if(indoorElapsedFrames>=indoorTotalFrames&&available){
-    indoorTotalFrames=null;indoorElapsedFrames=0;const customerId=state.nextCustomerId++;
-    const kind=LevelSystem.isUnlocked('milk')&&Math.random()<0.25?'milk':'regular';
-    const size=kind==='milk'?'CUP-0':chooseCustomerCup();
-    state.customers.push({id:customerId,channel:'indoor',kind,size,status:'waiting',arrivedFrame:TimeSystem.getGameFrame(),createdSeq:state.nextCustomerSequence++,mealDurationFrames:0,mealStartedFrame:0});
-    record(`內用顧客 #${customerId} 到店，提出${kind==='milk'?'牛奶咖啡':CUP_LABEL[size]+'咖啡'}需求。`);
+    indoorTotalFrames=null;indoorElapsedFrames=0;createCustomer('indoor');
     VisualSystem.dispatch('game');
     ensureRobotWorkScheduled();
     scheduleIndoorArrival();
