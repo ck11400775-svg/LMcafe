@@ -269,7 +269,6 @@
 <script>
 (() => {
 'use strict';
-
 const $ = id => document.getElementById(id);
 let currentScreen = 'L0';
 let soundDialogOrigin = 'L0';
@@ -290,7 +289,6 @@ function returnToMainMenu(){
   VisualSystem.dispatch('screen','L0');
   if(!timestop)setTimeStop(true);
 }
-
 // ============================================================
 // 唯一實際鐘、唯一遊戲鐘與唯一判斷流程
 // ============================================================
@@ -300,7 +298,6 @@ const FRAME_MS = 100;
 const UniqueRealClock = Object.freeze({
   getTime: () => Date.now()
 });
-
 // ============================================================
 // 唯一排程區
 // 所有 setTimeout / setInterval 與遊戲時間排程只在此區管理。
@@ -309,7 +306,6 @@ const ScheduleSystem = (() => {
   const realTasks = new Set();
   const gameTasks = new Set();
   let frameTrigger = null;
-
   function armRealTask(task) {
     if (!task.active) return;
     task.timerId = window.setTimeout(() => {
@@ -322,7 +318,6 @@ const ScheduleSystem = (() => {
       if (task.active && task.interval > 0) armRealTask(task);
     }, Math.max(0, task.dueAt - UniqueRealClock.getTime()));
   }
-
   function scheduleReal(callback, delayMs = 0, intervalMs = 0) {
     if (typeof callback !== 'function') throw new TypeError('時間排程回呼必須是函式');
     const task = {
@@ -336,7 +331,6 @@ const ScheduleSystem = (() => {
     armRealTask(task);
     return task;
   }
-
   function cancelReal(task) {
     if (!task || !realTasks.has(task)) return false;
     task.active = false;
@@ -345,9 +339,7 @@ const ScheduleSystem = (() => {
     realTasks.delete(task);
     return true;
   }
-
   const delayReal = delayMs => new Promise(resolve => scheduleReal(resolve, delayMs));
-
   function scheduleGameFrames(delayFrames, callback) {
     if (!Number.isInteger(delayFrames) || delayFrames < 0) throw new TypeError('排程延遲必須是非負 Frame 整數');
     if (typeof callback !== 'function') throw new TypeError('排程回呼必須是函式');
@@ -355,26 +347,22 @@ const ScheduleSystem = (() => {
     gameTasks.add(task);
     return task;
   }
-
   function setGameTaskStatus(task, status) {
     if (!gameTasks.has(task)) return false;
     task.status = status;
     if (['completed', 'cancelled', 'failed'].includes(status)) gameTasks.delete(task);
     return true;
   }
-
   function cancelGameSchedule(task) {
     if (!gameTasks.has(task) || ['completed', 'cancelled', 'failed'].includes(task.status)) return false;
     return setGameTaskStatus(task, 'cancelled');
   }
-
   function hasPendingGameSchedules() {
     for (const task of gameTasks) {
       if (task.status === 'pending') return true;
     }
     return false;
   }
-
   function runGameSchedules() {
     for (const task of gameTasks) {
       if (task.status !== 'pending' || task.dueFrame > gameFrame) continue;
@@ -389,13 +377,11 @@ const ScheduleSystem = (() => {
       }
     }
   }
-
   function startFrameTrigger(callback) {
     if (frameTrigger !== null) return false;
     frameTrigger = window.setInterval(callback, FRAME_MS);
     return true;
   }
-
   return Object.freeze({
     scheduleReal, cancelReal, delayReal,
     scheduleGameFrames, cancelGameSchedule,
@@ -403,13 +389,11 @@ const ScheduleSystem = (() => {
   });
 })();
 window.LMcafeScheduleSystem = ScheduleSystem;
-
 // ============================================================
 // 唯一遊戲鐘與唯一判斷程式
 // ============================================================
 const TimeSystem = (() => {
   let started = false;
-
   const UniqueGameClock = Object.freeze({
     receiveUpdateRequest() {
       gameFrame += 1;
@@ -418,21 +402,18 @@ const TimeSystem = (() => {
     },
     getFrame: () => gameFrame
   });
-
   const TimeJudgement = Object.freeze({
     receiveRequest() {
       if (timestop) return false;
       return UniqueGameClock.receiveUpdateRequest();
     }
   });
-
   function start() {
     if (started) return false;
     started = true;
     ScheduleSystem.startFrameTrigger(TimeJudgement.receiveRequest);
     return true;
   }
-
   function getState() {
     return Object.freeze({
       initialized: started,
@@ -440,7 +421,6 @@ const TimeSystem = (() => {
       gameFrame: UniqueGameClock.getFrame()
     });
   }
-
   return Object.freeze({
     getRealTime: UniqueRealClock.getTime,
     getGameFrame: UniqueGameClock.getFrame,
@@ -455,7 +435,6 @@ Object.defineProperty(window, 'timestop', {
   set: value => { timestop = Boolean(value); }
 });
 window.LMcafeTimeSystem = TimeSystem;
-
 function setTimeStop(value) {
   const next = Boolean(value);
   if (next === timestop) return;
@@ -469,11 +448,8 @@ function setTimeStop(value) {
   VisualSystem.dispatch('robotManagement');
   VisualSystem.dispatch('robotCountdowns');
 }
-
 // ============================================================
 // 23. 顯示提示文字區
-// 靜態介面文字、輔助標籤、動態文字與 HTML 文字更新統一由此區管理。
-// 其他功能區只能呼叫本區的顯示函式，不得直接修改文字內容。
 // ============================================================
 const STATIC_DISPLAY_TEXT = Object.freeze({"T463":"開始遊戲","T464":"× 返回主選單","T465":"×","T1":"◉","T2":"10,000","T3":"◉","T4":"0","T5":"♥","T6":"30","T7":"/","T8":"30","T9":"LV","T10":"0","T11":"0 / 100 EP","T12":"B","T13":"/","T14":"0","T16":"LMcafe","T18":"聲音","T19":"靜音","T20":"音樂 ","T21":"28%","T22":"音效 ","T23":"45%","T24":"日期","T25":"第1年・春季 D1","T26":"晴","T27":"☕","T28":"製作區","T29":"ϟ","T30":"電力區","T31":"▦","T32":"商店","T33":"▤","T34":"原料庫存","T35":"▣","T36":"通知與記錄","T37":"✦","T38":"成就","T39":"✧","T40":"抽卡","T41":"💳","T42":"貸款資訊","T43":"📊 每日結算","T44":"💾 存檔","T46":"🔊 聲音","T47":"顧客與製作","T50":"選擇咖啡豆","T51":"F 級","T52":"1,000 LT/kg","T53":"E 級","T54":"1,500 LT/kg","T55":"D 級","T56":"2,000 LT/kg","T57":"C 級","T58":"2,500 LT/kg","T59":"B 級","T60":"3,000 LT/kg","T61":"A 級","T62":"3,500 LT/kg","T63":"A+ 級","T64":"4,000 LT/kg","T65":"S- 級","T66":"抽卡限定","T67":"S 級","T68":"抽卡限定","T69":"S+ 級","T70":"抽卡限定","T71":"R- 級","T72":"抽卡限定","T73":"R 級","T74":"抽卡限定","T75":"R+ 級","T76":"抽卡限定","T77":"SSR 級","T78":"抽卡限定","T79":"牛奶咖啡原料（LV5）","T80":"鮮乳","T81":"煉乳","T82":"奶粉","T83":"保久乳","T84":"每杯擇一：鮮乳／煉乳／保久乳 50ml；奶粉 5g。庫存不足時不能製作。","T86":"小杯售價調整（LV2）","T87":"價格調整功能目前尚未開放。","T88":"未開放","T89":"內用區","T90":"第一次擴店","T91":"費用：1,000,000 LT；增加 15 個座位；室內客人到達速率 ×0.8","T92":"擴店","T93":"內用杯 ×10","T94":"購買 10 個","T95":"內用顧客","T96":"準備中","T97":"室內服務費","T98":"0%","T99":"5%","T100":"10%","T101":"15%","T102":"20%","T103":"25%","T104":"30%","T105":"套用服務費","T106":"用餐時間上限（秒）","T107":"套用時間限制","T108":"貸款週期","T109":"下次貸款收取日","T110":"D","T111":"30","T112":"每日結算","T113":"正常營業","T114":"營收","T115":"0","T116":" LT","T117":"支出","T118":"0","T119":" LT","T120":"淨額","T121":"0","T122":" LT","T123":"結束今日並進入下一天","T129":"Debug Console","T130":"Debug","T131":"help · all max · money N|max · gl N|max · lv N|max · ep N|max · day N|max · energy N|max|inf · bean 豆級 N|max · cup 杯型 N|max","T132":"成就系統 ","T133":"✕","T134":"0 / 0","T135":"0%","T136":"✦ ","T137":"全部","T138":"◈ ","T139":"LT 財富成就","T140":"♜ ","T141":"長期風評成就","T142":"⌃ ","T143":"等級成就","T144":"全部成就","T145":"✧","T146":"選擇一項成就","T147":"每日結算","T148":"‹","T149":"⌂","T150":"貸款資訊","T151":"‹","T152":"⌂","T156":"聲音設定","T157":"‹","T158":"⌂","T160":"商店","T161":"⌂","T162":"‹","T164":"咖啡豆","T167":"外帶杯","T170":"牛奶原料","T173":"裝潢","T176":"機器人","T178":"‹","T179":"商品","T181":"原料庫存","T182":"⌂","T183":"‹","T184":"01","T185":"咖啡豆","T186":"單位：g","T187":"F 級咖啡豆","T188":"0","T190":"E 級咖啡豆","T191":"0","T193":"D 級咖啡豆","T194":"0","T196":"C 級咖啡豆","T197":"0","T199":"B 級咖啡豆","T200":"0","T202":"A 級咖啡豆","T203":"0","T205":"A+ 級咖啡豆","T206":"0","T208":"S- 級咖啡豆","T209":"0","T211":"S 級咖啡豆","T212":"0","T214":"S+ 級咖啡豆","T215":"0","T217":"R- 級咖啡豆","T218":"0","T220":"R 級咖啡豆","T221":"0","T223":"R+ 級咖啡豆","T224":"0","T226":"SSR 級咖啡豆","T227":"0","T229":"02","T230":"外帶杯","T231":"單位：個","T232":"小杯外帶杯","T233":"0","T235":"中杯外帶杯","T236":"0","T238":"大杯外帶杯","T239":"0","T241":"超大杯外帶杯","T242":"0","T244":"03","T245":"牛奶原料","T246":"依原料標示單位","T247":"鮮乳","T248":"0","T249":"ml","T250":"煉乳","T251":"0","T252":"ml","T253":"奶粉","T254":"0","T255":"g","T256":"保久乳","T257":"0","T258":"ml","T259":"04","T260":"其他庫存","T261":"既有項目","T262":"室內用杯","T263":"0","T264":"個","T265":"座位容量","T266":"0","T267":"位","T268":"05","T269":"簡餐原料","T270":"單位：份","T271":"吐司","T272":"0","T274":"麵粉","T275":"0","T277":"白米","T278":"0","T280":"雞肉","T281":"0","T283":"雞蛋","T284":"0","T286":"營業用乳","T287":"0","T289":"奶油","T290":"0","T292":"鮮奶油","T293":"0","T295":"優格","T296":"0","T298":"生菜","T299":"0","T301":"番茄","T302":"0","T304":"小黃瓜","T305":"0","T307":"洋蔥","T308":"0","T310":"馬鈴薯","T311":"0","T313":"水果","T314":"0","T316":"番茄醬","T317":"0","T319":"果醬","T320":"0","T322":"醬料","T323":"0","T325":"糖","T326":"0","T328":"抽卡","T329":"⌂","T330":"☕","T331":"咖啡豆抽卡","T333":"▧","T334":"簡餐原料池","T336":"咖啡豆抽卡","T337":"‹","T338":"⌂","T339":"Lita","T340":"10,000","T341":"Gold Lita","T342":"0","T343":"抽取池依照目前等級開放。","T344":"單抽 · 5,000 Lita + 5 Gold Lita","T345":"十連送一抽 · 50,000 Lita + 50 Gold Lita（共 11 抽）","T346":"簡餐原料抽卡","T347":"⌂","T348":"每次抽卡消耗 100 LT，隨機取得一種簡餐原料一份。","T349":"Lita","T350":"10,000","T351":"◈","T352":"","T353":"抽取一次 · 100 LT","T354":"跳過掃描，查看結果","T355":"咖啡豆抽卡結果","T356":"⌂","T358":"查看抽取結果","T361":"‹","T362":"⌂","T363":"☕ 外帶","T364":"▤ 內用","T365":"◈ 原料","T387":"咖啡豆種類","T388":"牛奶原料","T389":"F 級","T390":"鮮乳","T391":"此處選擇會套用於所有外帶與內用顧客。","T394":"基礎 MATX 機殼","T396":"MATX","T397":"開啟智控電腦","T398":"機器人管理","T399":"LV20 解鎖","T400":"持有機器人","T401":"0","T402":"目前處理中","T403":"0","T404":"主機板配置","T405":"元件位置總覽","T406":"返回中控","T407":"主機板元件配置圖（俯視）","T408":"CPU","T409":"RAM 插槽 1","T410":"RAM 插槽 2","T411":"PCIe 0","T412":"M.2 0","T418":"硬體詳細資訊","T419":"CPU","T420":"返回主機板","T421":"D1｜開幕折扣","T422":"咖啡店今天正式開幕。折扣只在 D1 生效，D2 起恢復原價。","T423":"五折（50%）","T424":"小杯原價的 50%","T425":"八折（80%）","T426":"小杯原價的 80%","T427":"不打折","T428":"維持原價","T429":"貸款申請與還款","T430":"目前等級最高額度","T431":"目前未償債務","T432":"尚可申請額度","T433":"每期利息","T434":"5%（複利）","T435":"申請貸款金額（LT）","T436":"不可超過目前尚可申請額度。","T437":"申請貸款","T438":"每期收取本利和比例","T439":"1.5%","T440":"12.5%","T441":"每 30 日先計入 5% 利息，再按此比例收取本利和。不可提前還款。","T442":"下一期預估收取金額","T443":"尚無貸款","T444":"有未償還貸款時，依目前比例估算。","T445":"I/O","T446":"南橋","A16":"輸入申請金額","A0":"遊戲狀態","A1":"貨幣","A2":"活力","A3":"等級與經驗","A4":"風評","A5":"通知適配區","A6":"顧客即將離店提示","A7":"聲音設定","A8":"30","A9":"輸入 help 查看指令","A10":"關閉","A11":"成就分類","A12":"簡餐原料卡背","A13":"咖啡豆圖案","A14":"智控電腦機殼外觀","A15":"主機板硬體配置","T447":"特殊顧客","T448":"客製化製作","T449":"客製化製作界面","T450":"初春祭","T451":"知道了","T453":"用電設備","T454":"智慧點餐機","T455":"燈泡","T456":"每日總耗電","T457":"每日電費","T458":"每日電費＝設備總耗電瓦數 × 8 LT；擴店每次增加 5 個燈泡。","T459":"電費結算","T460":"本期累計電費","T461":"下次結算日","T462":"店面智控"});
 const DisplayText = Object.freeze({
@@ -515,7 +491,6 @@ const DisplayText = Object.freeze({
     }
   }
 });
-
 let lastPromptMessage = '';
 let lastPromptAt = 0;
 const PromptQueue = (() => {
@@ -542,7 +517,6 @@ const PromptQueue = (() => {
 })();
 window.LMcafeDisplayText = DisplayText;
 DisplayText.applyStatic(document);
-
 const BEAN_DEFS = Object.freeze([
   {id:'BEAN-0',grade:'F'},{id:'BEAN-1',grade:'E'},{id:'BEAN-2',grade:'D'},
   {id:'BEAN-3',grade:'C'},{id:'BEAN-4',grade:'B'},{id:'BEAN-5',grade:'A'},
@@ -617,13 +591,11 @@ const MILK_INFO = {
 };
 // Debug/輸入防護上限：純技術安全限制，不代表遊戲平衡數值。
 const INPUT_LIMITS = { money:1_000_000_000, ep:1_000_000_000, day:1_000_000, bean:1_000_000_000, cup:1_000_000, stock:1_000_000_000, count:1_000_000 };
-
 const EXPANSION_COSTS = Object.freeze([1000000,2000000,4000000,8000000,16000000,32000000,64000000]);
 function getExpansionDetails(count=state.expansionCount){
   const index=Math.max(0,Math.min(EXPANSION_COSTS.length,integerize(Number(count)||0,'floor')));
   return {count:index,cost:EXPANSION_COSTS[index]??null,seats:index===0?15:20,rate:index===0?1:0.8*Math.pow(0.9,index-1),rateFactor:index===0?0.8:0.9,maxed:index>=EXPANSION_COSTS.length};
 }
-
 const state = {
   money:10000, gl:0, energy:30, energyInfinite:false, maxEnergy:30, ep:0, level:0, day:1, weather:null, weatherDay:0,
   beans:{...DEFAULT_BEANS}, mealIngredients:{bread:0,flour:0,rice:0,chicken:0,egg:0,milk:0,butter:0,cream:0,yogurt:0,lettuce:0,tomato:0,cucumber:0,onion:0,potato:0,fruit:0,ketchup:0,jam:0,sauce:0,sugar:0}, cups:{...DEFAULT_CUPS},
@@ -637,7 +609,6 @@ const state = {
 };
 let changingDay = false;
 let eventId = 0;
-
 const integerize = (value, mode='round') => {
   const number = Number(value);
   if (!Number.isFinite(number)) return 0;
@@ -648,7 +619,6 @@ const integerize = (value, mode='round') => {
 const moneyText = (n, unit='') => `${integerize((Number(n) + Number.EPSILON) || 0).toLocaleString('en-US')}${unit}`;
 const threshold = level => 50 * level * (level + 1);
 const levelFor = ep => {
-  // 二分搜尋，避免 EP 輸入偏大時逐級迴圈造成卡死。
   let low = 0, high = 100000;
   while (low < high) {
     const mid = integerize((low + high) / 2,'ceil');
@@ -675,7 +645,6 @@ function applyCompletedCustomerReputation(size, beanGrade) {
   state.longRep += LONG_REP_CHANGE[beanGrade] ?? 0;
 }
 function applyServiceFeeReputation(customer) {
-  // 舊存檔的用餐顧客沒有當時的服務費紀錄，不推定其費率。
   if (!Object.prototype.hasOwnProperty.call(customer, 'serviceFeeCharged')) return;
   const fee = Number(customer.serviceFeeCharged);
   state.shortRep += SERVICE_FEE_REP[fee] ?? 0;
@@ -685,8 +654,6 @@ function waitProgress(arrivedFrame, now = TimeSystem.getGameFrame()) {
   return {remaining:Math.max(0, CUSTOMER_WAIT_FRAMES - elapsed), percent:Math.min(100, elapsed / CUSTOMER_WAIT_FRAMES * 100)};
 }
 const DEPARTURE_WARNING_FRAMES = 30; // 既有 10 秒等待期限前 3 秒提醒
-
-
 const IMPORTANT_NOTICE_RE = /(重要|不足|解鎖|升級|進入 D\d+|結算：|擴店|貸款定期收取|限定原料抽取|開幕折扣|劇情|事件|完成顧客需求|營業日|已儲存|已讀取|匯入成功|購買成功|錯誤)/;
 function addNotice(type, message, day = state.day) {
   if (!IMPORTANT_NOTICE_RE.test(message)) return;
@@ -752,18 +719,12 @@ function activateDayEvent(){
   if(isNewEvent)VisualSystem.dispatch('event.show');
   return true;
 }
-
 // 功能區只呼叫唯一顯示提示文字區，不自行執行通知或紀錄文字呈現。
 const notify = DisplayText.notify;
 const record = DisplayText.record;
-
-
 // ============================================================
 // 03. D1 開幕事件與對話
 // ============================================================
-
-
-
 function chooseOpeningDiscount(choice, multiplier, message) {
   if (state.day !== 1 || state.d1Choice !== null) return;
   state.d1Choice = choice;
@@ -775,7 +736,6 @@ function chooseOpeningDiscount(choice, multiplier, message) {
   notify(`D1 開幕折扣已套用：${choice === 'half' ? '五折' : choice === 'eighty' ? '八折' : '不打折'}。`);
   BeanUnlockSystem.announce(['BEAN-0','BEAN-1','BEAN-2']);
 }
-
 function canCancelOpeningDiscount(){
   return state.day!==1||state.d1Choice!==null;
 }
@@ -784,11 +744,8 @@ function openingEvent() {
   const dialog = $('openingDiscountDialog');
   if (dialog && !dialog.open) VisualSystem.dispatch('dialog.open', dialog);
 }
-
 // ============================================================
 // 04. 咖啡豆解鎖狀態與通知
-// 初始解鎖、等級解鎖及其他既有解鎖來源統一呼叫此區。
-// 解鎖通知紀錄屬於遊戲狀態，不因畫面重繪而重新通知。
 // ============================================================
 function normalizeBeanUnlockState(target=state){
   const known = Array.isArray(target.beanUnlockNotified) ? target.beanUnlockNotified : [];
@@ -805,14 +762,11 @@ const BeanUnlockSystem = Object.freeze({
     state.beanUnlockNotified.push(...newlyUnlocked);
     const labels = newlyUnlocked.map(id=>`${BEAN_GRADE[id]} 級`).join('、');
     const message = `新咖啡豆已解鎖：${labels}。`;
-    // 延至本次升級與畫面更新完成後顯示，避免同一輪的成就提示覆蓋解鎖通知。
     ScheduleSystem.scheduleReal(()=>notify(message), 100);
     return newlyUnlocked;
   },
   getNotified(){ return [...normalizeBeanUnlockState(state)]; }
 });
-
-
 // ============================================================
 // 05. 日期、天氣與等級
 // ============================================================
@@ -838,7 +792,6 @@ function updateLevel(previousLevel = state.level, grantLevelRewards = true, sile
   if (state.level !== previousLevel) state.ep = threshold(state.level);
   state.maxEnergy = energyLimit(state.level);
   if (!state.energyInfinite) state.energy = Math.min(state.energy, state.maxEnergy);
-
   if (state.level > previousLevel) {
     const newlyUnlockedBeans = BEANS.filter(id => LevelSystem.required('bean',id)>0 && previousLevel < LevelSystem.required('bean',id) && LevelSystem.isUnlocked('bean',id));
     if (grantLevelRewards) {
@@ -846,14 +799,12 @@ function updateLevel(previousLevel = state.level, grantLevelRewards = true, sile
       state.gl = Math.min(INPUT_LIMITS.money, (Number(state.gl)||0) + gainedLevels * 5);
       if(!silent){record(`等級提升：LV${previousLevel} → LV${state.level}，獲得 ${gainedLevels*5} GL。`);notify(`升級！目前 LV${state.level}`);}
     }
-    // 原有 LV2／4／5／8／12 解鎖提示整合至成就介面，不再另外彈出升級視窗。
     if (!silent && newlyUnlockedBeans.length) BeanUnlockSystem.announce(newlyUnlockedBeans);
   }
   if (LevelSystem.isUnlocked('indoor') && !LevelSystem.isUnlocked('indoor',null,previousLevel)) scheduleIndoorArrival();
   else if (!LevelSystem.isUnlocked('indoor') && LevelSystem.isUnlocked('indoor',null,previousLevel)) scheduleIndoorArrival();
   checkAchievementUnlocks(silent);
 }
-
 // ============================================================
 // 08. 商店統一區｜商品購買與補貨
 // ============================================================
@@ -927,15 +878,12 @@ function setMealLimit(value){
   VisualSystem.dispatch('game');
   notify(`用餐時間上限已設定為 ${limit} 秒。`);
 }
-
 // ============================================================
 // 03. 顧客統一區｜顧客查詢與需求資料
 // ============================================================
 function findCustomer(id, channel=null, waitingOnly=false){
   return state.customers.find(customer=>customer.id===id && (!channel || customer.channel===channel) && (!waitingOnly || customer.status==='waiting'))||null;
 }
-
-
 // ============================================================
 // 03. 顧客統一區｜外帶顧客流程與等待
 // ============================================================
@@ -953,7 +901,6 @@ function chooseCustomerCup() {
   }
   return entries[entries.length - 1].size;
 }
-
 let takeoutDepartureTask = null;
 function scheduleTakeoutDepartureCheck(){
   if(takeoutDepartureTask || !state.customers.some(customer=>customer.channel==='takeout'&&customer.status==='waiting'))return;
@@ -970,12 +917,9 @@ function processTakeoutDepartures() {
   else VisualSystem.dispatch('departureAlerts');
   scheduleTakeoutDepartureCheck();
 }
-
-// 顧客到店與等待倒數均由唯一遊戲時間排程區推進。
 let customerStartedFrame = 0;
 let customerTotalDelayFrames = null;
 let customerArrivalTask = null;
-
 function scheduleCustomerArrival() {
   if (customerArrivalTask || customerTotalDelayFrames !== null) return;
   customerTotalDelayFrames = integerize(Math.random() * 20,'floor');
@@ -1003,9 +947,6 @@ function tickCustomerArrival() {
   ensureRobotWorkScheduled();
   scheduleCustomerArrival();
 }
-
-
-// 內用顧客到店與用餐倒數均使用唯一遊戲時間排程區。
 let indoorElapsedFrames = 0;
 let indoorTotalFrames = null;
 let indoorArrivalTask = null;
@@ -1071,7 +1012,6 @@ function tickIndoorMeal(customerId){
   VisualSystem.dispatch('customers');
   scheduleIndoorMeal(customer);
 }
-
 // ============================================================
 // 05. 製作統一區｜所有人工與機器人共用同一製作流程
 // ============================================================
@@ -1100,8 +1040,6 @@ function getCustomerCoffeePlan(customer, beanGrade, milkType, sourceState=state)
   if((sourceState.beans[beanGrade]||0)<beansNeeded)missingMaterials.push((BEAN_GRADE[beanGrade]||'所選')+'級咖啡豆');
   if(isMilk&&(sourceState.milkStock[milkType]||0)<milkItem.use)missingMaterials.push(milkItem.label);
   if(!isIndoor&&(sourceState.cups[cupSize]||0)<1)missingMaterials.push(CUP_LABEL[cupSize]+'外帶杯');
-
-  // Preserve the original production validation order and error messages.
   if(isMilk&&(sourceState.milkStock[milkType]||0)<milkItem.use) return {error:`${milkItem.label}庫存不足。`,missingMaterials};
   if(!sourceState.energyInfinite && sourceState.energy<energyNeeded) return {error:'活力不足。',missingMaterials};
   if((sourceState.beans[beanGrade]||0)<beansNeeded) return {error:`${BEAN_GRADE[beanGrade]} 級豆不足。`,missingMaterials};
@@ -1141,7 +1079,6 @@ function makeCoffee(size, customerId, beanGrade) {
   if(customer.kind==='milk' || customer.size!==cupId(size)) return notify('顧客需求品項不符，請重新確認。');
   return makeCustomerCoffee(customerId,beanGrade,state.selectedMilk);
 }
-
 function selectBean(value){
   const id=beanId(value);
   if(!id||!LevelSystem.isUnlocked('bean',id))return notify('此咖啡豆等級尚未解鎖。');
@@ -1158,8 +1095,6 @@ function selectMilk(value){
   notify(`共用牛奶原料已選為${MILK_INFO[value].label||'鮮乳'}。`);
   return true;
 }
-
-// 機器人自動處理顧客：外帶與內用顧客依到店先後排序；資源不足者略過。
 // ============================================================
 // 06. 機器人統一區｜接單與工作管理
 // ============================================================
@@ -1174,7 +1109,6 @@ function buyRobot(){
   VisualSystem.dispatch('robotManagement');
   ensureRobotWorkScheduled();
 }
-
 function listEligibleRobotCustomers(){
   const candidates=[];
   for(const customer of state.customers){
@@ -1206,7 +1140,6 @@ function cancelRobotJobsForCustomer(type,id){
     if(robot.job && robot.job.type===type && robot.job.customerId===id) robot.job=null;
   }
 }
-
 let robotWorkTask=null;
 function ensureRobotWorkScheduled(){
   if(robotWorkTask||!state.robotEmployees.length)return false;
@@ -1236,7 +1169,6 @@ function tickRobotWork(){
   VisualSystem.dispatch('robotCountdowns');
   ensureRobotWorkScheduled();
 }
-
 // ============================================================
 // 11. 每日推進與結算
 // ============================================================
@@ -1254,16 +1186,12 @@ function advanceDay() {
   state.discount = 1;
   state.d1Choice = null;
   if (!state.energyInfinite) state.energy = state.maxEnergy;
-  // Keep waiting customers across day changes; customers must not disappear.
   state.income = 0;
   state.spend = 0;
-
   record(`結算：收入 ${moneyText(income)} LT、支出 ${moneyText(spend)} LT、淨額 ${moneyText(income-spend)} LT。`, finishedDay);
   notify(`進入 D${state.day}，活力已恢復，折扣已重置。`);
-
   if (state.day >= state.loanDue) {
     if (state.loanBalance > 0) {
-      // 每 30 日先對未償債務計入 5% 複利，再按玩家選定比例收取本利和。
       const interest = integerize(state.loanBalance * 0.05 + Number.EPSILON);
       const balanceWithInterest = state.loanBalance + interest;
       const rate = Math.max(1.5, Math.min(12.5, Number(state.loanRate) || 1.5)) / 100;
@@ -1292,12 +1220,10 @@ function advanceDay() {
     state.electricityPeriodUsage=0;
     state.utilityDue+=60;
   }
-
   activateDayEvent();
   VisualSystem.dispatch('game');
   changingDay = false;
 }
-
 // ============================================================
 // 12. 智慧中控、電力與電腦硬體
 // ============================================================
@@ -1316,7 +1242,6 @@ function processElectricity(){
   state.electricityTotalCost=(Number(state.electricityTotalCost)||0)+cost;
   return {usage,cost,periodUsage:state.electricityPeriodUsage,periodCost:state.electricityPeriodCost};
 }
-
 const INITIAL_CONTROL_COMPUTER = Object.freeze([
   Object.freeze({id:'motherboard',part:'主機板',model:'ABD-HM630',size:'MATX'}),
   Object.freeze({id:'cpu',part:'CPU',model:'ALH-105v8',cores:4,maxFrequencyGHz:5.1,integratedGPU:Object.freeze({model:'ALH-gp806v6',type:'內顯'})}),
@@ -1332,10 +1257,6 @@ function handleComputerSlot(slotId){
   if(!item||item.installed===false)return;
   VisualSystem.dispatch('controlComputer',slotId);
 }
-
-
-
-
 const ACHIEVEMENT_REPUTATION = ['A','A+','S-','S','S+'];
 let achievementCategory = 'all';
 let selectedAchievementId = null;
@@ -1364,7 +1285,6 @@ function achievementDefinitions(sourceState=state){
     id:`reputation-${grade}`,category:'reputation',icon:'♜',title:`長期風評・${grade}`,
     description:`長期風評提升至 ${grade}`,target:index+1,current:Math.max(0,ACHIEVEMENT_REPUTATION.indexOf(longRepGrade(sourceState.longRep))+1),unit:'級'
   }));
-  // 只生成已達成等級與下一個目標；升級後自然擴展，不預先列出固定清單或設定成就上限。
   const nextLevel=Math.max(1,Math.floor(Number(sourceState.level)||0)+1);
   for(let level=1;level<=nextLevel;level++)list.push({
     id:`level-${level}`,category:'level',icon:'⌃',title:`升級至 LV${level}`,
@@ -1389,7 +1309,6 @@ function checkAchievementUnlocks(silent=false){
     }
   }
 }
-
 function selectAchievementCategory(category){
   achievementCategory=category;
   VisualSystem.dispatch('achievements');
@@ -1398,22 +1317,15 @@ function selectAchievement(id){
   selectedAchievementId=id;
   VisualSystem.dispatch('achievements');
 }
-
-
-
-
 // ============================================================
 // ============================================================
 // 15. Debug 專區｜所有 Debug 指令集中於此區
-// 僅提供已確認的單項數值調整，不改動未授權的遊戲規則。
 // ============================================================
 const DebugSystem = (() => {
   const help = 'all max · money N|max · gl N|max · lv N|max · ep N|max · day N|max · energy N|max|inf · bean 豆級 N|max · cup 杯型 N|max';
-
   function write(message) {
     DisplayText.setText($('consoleOutput'), message);
   }
-
   function setLevel(value) {
     const maxLevel = levelFor(INPUT_LIMITS.ep);
     if (!Number.isSafeInteger(value) || value < 0 || value > maxLevel) {
@@ -1427,14 +1339,10 @@ const DebugSystem = (() => {
     VisualSystem.dispatch('game');
     return true;
   }
-
   function execute(command) {
     const parts = String(command ?? '').trim().split(/\s+/).filter(Boolean);
     const [action, key, rawValue, ...extra] = parts;
     if (action === 'help') { write(help); return; }
-
-    // All Max = 將有益數據最大化／將不利數據降至最低，不是把每個欄位都設成最大數字。
-    // 日期是遊戲進度，不直接跳到最大，避免跳過日結與觸發大量帳單。
     if (action === 'all' && key === 'max' && parts.length === 2) {
       const oldLevel = state.level;
       state.money = INPUT_LIMITS.money;
@@ -1443,13 +1351,11 @@ const DebugSystem = (() => {
       updateLevel(oldLevel);
       state.energyInfinite = true;
       state.energy = state.maxEnergy;
-
       BEANS.forEach(grade => state.beans[grade] = INPUT_LIMITS.bean);
       Object.keys(state.cups).forEach(size => state.cups[size] = INPUT_LIMITS.cup);
       Object.keys(state.milkStock).forEach(type => state.milkStock[type] = INPUT_LIMITS.stock);
       state.indoorCups = INPUT_LIMITS.count;
       state.seats = INPUT_LIMITS.count;
-
       state.expansionCount = Math.max(1, Number(state.expansionCount)||0);
       state.serviceFee = 0;
       state.mealLimit = 5;
@@ -1459,7 +1365,6 @@ const DebugSystem = (() => {
           customer.mealStartedFrame = TimeSystem.getGameFrame();
         }
       });
-
       state.longRep = INPUT_LIMITS.money;
       state.shortRep = INPUT_LIMITS.money;
       state.income = INPUT_LIMITS.money;
@@ -1473,13 +1378,11 @@ const DebugSystem = (() => {
       VisualSystem.dispatch('input.reset',{values:{serviceFee:'0',mealLimit:'5',smallPrice:'35'}});
       return;
     }
-
     const validShape = extra.length === 0 && (
       ['money','gl','lv','ep','day','energy'].includes(action) ? parts.length === 2 :
       ['bean','cup'].includes(action) ? parts.length === 3 : false
     );
     if (!validShape) { write(`指令格式錯誤。${help}`); return; }
-
     const raw = ['bean','cup'].includes(action) ? rawValue : key;
     if (action === 'lv') {
       const maxLevel = levelFor(INPUT_LIMITS.ep);
@@ -1487,7 +1390,6 @@ const DebugSystem = (() => {
       setLevel(value);
       return;
     }
-
     let limit;
     if (action === 'money' || action === 'gl') limit = INPUT_LIMITS.money;
     else if (action === 'ep') limit = INPUT_LIMITS.ep;
@@ -1502,7 +1404,6 @@ const DebugSystem = (() => {
       if (!id) { write('杯型 ID 無效，請輸入 CUP-0、CUP-1、CUP-2 或 CUP-3。'); return; }
       limit = INPUT_LIMITS.cup;
     }
-
     const isInf = action === 'energy' && raw === 'inf';
     const isMax = raw === 'max';
     const number = isMax ? limit : Number(raw);
@@ -1514,7 +1415,6 @@ const DebugSystem = (() => {
       write(action === 'day' ? '營業日必須是整數。' : '杯數必須是整數。');
       return;
     }
-
     if (action === 'money') { state.money = number; checkAchievementUnlocks(); }
     else if (action === 'gl') state.gl = number;
     else if (action === 'ep') { const old = state.level; state.ep = number; updateLevel(old); }
@@ -1525,15 +1425,12 @@ const DebugSystem = (() => {
     }
     else if (action === 'bean') state.beans[beanId(key)] = number;
     else if (action === 'cup') state.cups[cupId(key)] = number;
-
     write(isInf ? '已啟用無限活力：製作不消耗活力，換日也會持續生效。輸入 energy N 或 energy max 可關閉。' :
       isMax ? `已設為安全上限：${moneyText(number)}。` : '指令已執行。');
     VisualSystem.dispatch('game');
   }
-
   return Object.freeze({execute, help});
 })();
-
 // 所有使用者操作事件與動態元件事件統一由本區綁定。
 // ============================================================
 // 17. 使用者操作與事件綁定
@@ -1554,8 +1451,6 @@ function bindGameEvents() {
       VisualSystem.dispatch('input.reset',{target:event.target,value:''});
     }
   });
-
-  // 抽卡操作
   $('openGachaMenu').onclick=()=>{VisualSystem.dispatch('beanGacha.refresh');VisualSystem.dispatch('dialog.open','gachaMenuDialog');};
   $('openMealGacha').onclick=()=>{VisualSystem.dispatch('beanGacha.refresh');VisualSystem.dispatch('dialog.close','gachaMenuDialog');VisualSystem.dispatch('dialog.open','mealIngredientGachaDialog');VisualSystem.dispatch('mealGacha.refresh');};
   $('mealDrawOne').onclick=()=>window.LMcafeAPI['07']['抽獎執行/執行抽獎']('ingredient',1);
@@ -1566,20 +1461,14 @@ function bindGameEvents() {
   $('beanDrawTen').onclick=()=>window.LMcafeAPI['07']['抽獎執行/執行抽獎']('bean',10);
   $('skipBeanScan').onclick=()=>VisualSystem.dispatch('beanScan.finish');
   $('beanDrawResultDialog').addEventListener('close',()=>window.LMcafeGachaSystem.closeBeanResults());
-
-  // 音效啟用、音量設定及按鈕音效也統一由事件綁定區觸發。
   document.addEventListener('pointerdown',()=>window.LMcafeAudioSystem?.activate(),{once:true});
   document.addEventListener('keydown',()=>window.LMcafeAudioSystem?.activate(),{once:true});
   $('musicVolume')?.addEventListener('input',event=>window.LMcafeAudioSystem?.setMusicVolume(event.target.value));
   $('sfxVolume')?.addEventListener('input',event=>window.LMcafeAudioSystem?.setSfxVolume(event.target.value));
   $('audioMute')?.addEventListener('click',()=>window.LMcafeAudioSystem?.toggleMute());
-
-  // 動態產生元件的事件統一委派於此處
   // 界面改變流程 2.1：所有頁面返回統一由此處分派。
   function navigateInterface(action,page){
     const close=id=>VisualSystem.dispatch('dialog.close',id);
-
-    // Home 永遠回到 L1；若目前位於 L0，則先進入遊戲。
     if(action==='home'){
       close(page);
       if(page==='beanDrawResultDialog'){
@@ -1589,7 +1478,6 @@ function bindGameEvents() {
       if(currentScreen==='L0')enterGameScreen();
       return;
     }
-
     if(page==='soundDialog'){
       close(page);
       if(soundDialogOrigin==='L0')returnToMainMenu();
@@ -1679,8 +1567,6 @@ function bindGameEvents() {
       else if(button.dataset.shopAction==='robot')buyRobot();
     }
   },true);
-
-  // 成就與主介面操作
   $('openAchievements').addEventListener('click', () => VisualSystem.dispatch('achievement.archive.open'));
   $('closeAchievements').addEventListener('click', () => VisualSystem.dispatch('dialog.close', 'achievementDialog'));
   $('chooseHalfDiscount').addEventListener('click', () => chooseOpeningDiscount('half', 0.5, '選擇開幕五折。'));
@@ -1702,11 +1588,8 @@ function bindGameEvents() {
   $('openInventory').onclick = () => { VisualSystem.dispatch('game'); VisualSystem.dispatch('dialog.open', 'inventoryDialog'); };
   $('shopDialog').addEventListener('close', () => VisualSystem.dispatch('shop.view','home'));
   $('milkType').addEventListener('change',event=>selectMilk(event.target.value));
-
   $('nextDay').onclick = advanceDay;
-
   $('setPrice').onclick = () => notify('價格調整功能目前尚未開放。');
-
   $('expandShop').onclick = expandShop;
   $('buyIndoorCups').onclick = buyIndoorCups;
   $('setServiceFee').onclick = () => setServiceFee($('serviceFee').value);
@@ -1725,13 +1608,9 @@ function bindGameEvents() {
   $('startGame').onclick = enterGameScreen;
   $('returnL0').onclick = returnToMainMenu;
   $('togglePause').onclick = () => setTimeStop(!timestop);
-
 }
-
-// 畫面組裝由唯一視覺區統一初始化。
 // 22 區使用的唯讀顯示資料快照；視覺程式不直接讀寫即時遊戲狀態。
 // 22. 唯一視覺呈現區
-// 視覺快照與畫面資料模型；只讀取遊戲狀態。
 let visualState = null;
 let visualDispatchDepth = 0;
 function createVisualSnapshot(){
@@ -1785,8 +1664,6 @@ function createVisualSnapshot(){
     }
   };
 }
-
-// 視覺資料模型：只整理畫面需要的資料，不修改遊戲狀態。
 function getShopDisplayData(category,sourceState=visualState){
   if(!category)category=$('shopProducts')?.dataset.category||'';
   const rows=[];
@@ -1808,7 +1685,6 @@ function getShopDisplayData(category,sourceState=visualState){
   }
   return {category,rows};
 }
-
 function getBeanGachaDisplayData(sourceState=visualState){
   const pool=window.LMcafeAPI?.['07']?.['抽獎池管理/取得抽獎池']?.(sourceState.level)??[];
   const getIdName=window.LMcafeAPI?.['02']?.['ID 查詢/查詢 ID 名稱'];
@@ -1816,7 +1692,6 @@ function getBeanGachaDisplayData(sourceState=visualState){
   const drawPending=window.LMcafeGachaSystem?.isBeanDrawPending?.()??false;
   return {money:sourceState.money,gl:sourceState.gl||0,level:sourceState.level,displayPool,unavailable:!displayPool.length,drawOneDisabled:!displayPool.length||sourceState.money<5000||(sourceState.gl||0)<5||drawPending,drawTenDisabled:!displayPool.length||sourceState.money<50000||(sourceState.gl||0)<50||drawPending};
 }
-
 function getLoanDisplayData(sourceState=visualState){
   const max=loanCreditLimit(sourceState),balance=Math.max(0,Number(sourceState.loanBalance)||0),available=Math.max(0,max-balance);
   const rate=Math.max(1.5,Math.min(12.5,Number(sourceState.loanRate)||1.5));
@@ -1824,11 +1699,6 @@ function getLoanDisplayData(sourceState=visualState){
   if(balance>0){const withInterest=balance+integerize(balance*.05 + Number.EPSILON),payment=Math.min(withInterest,Math.max(1,integerize(withInterest*rate/100 + Number.EPSILON)));estimate=moneyText(payment,' LT');estimateHint=`以目前債務計算：計息後 ${moneyText(withInterest,' LT')}，本期比例 ${rate.toFixed(1)}%。`;}
   return {max,balance,available,hint:available>0?`目前 LV${sourceState.level} 可再申請 ${moneyText(available,' LT')}。`:'目前已用滿此等級可貸額度。',canApply:available>=1,rate,estimate,estimateHint};
 }
-
-
-
-// 視覺呈現僅經 VisualSystem.dispatch；遊戲狀態由功能區管理。
-// 13-1｜顯示環境與版面適配資料；實際排列由集中 CSS 斷點與版面初始化負責。
 function getVisualEnvironment(){
   const width=Math.max(0,Number(window.innerWidth)||0),height=Math.max(0,Number(window.innerHeight)||0);
   return Object.freeze({width,height,ratio:height?width/height:0,devicePixelRatio:Number(window.devicePixelRatio)||1,isMobile:width<=620,isTablet:width>620&&width<=980});
@@ -1837,8 +1707,6 @@ function getVisualStyles(){
   const css=getComputedStyle(document.documentElement);
   return Object.freeze({background:css.getPropertyValue('--bg').trim(),surface:css.getPropertyValue('--paper').trim(),text:css.getPropertyValue('--ink').trim(),muted:css.getPropertyValue('--muted').trim(),accent:css.getPropertyValue('--accent').trim()||css.getPropertyValue('--brown').trim(),line:css.getPropertyValue('--line').trim()});
 }
-
-
 // 22.1 抽取掃描與即時狀態呈現
 function drawBeanGacha(model){
   const data=model&&typeof model==='object'?model:{};
@@ -1851,7 +1719,6 @@ function drawBeanGacha(model){
   $('beanDrawOne').disabled=!!data.drawOneDisabled;
   $('beanDrawTen').disabled=!!data.drawTenDisabled;
 }
-
 function robotJobStatusText(robot){
   if(!robot?.job)return '待命中 · 自動尋找顧客';
   const job=robot.job;
@@ -1861,17 +1728,14 @@ function robotJobStatusText(robot){
   const timer=visualState.timestop?'暫停':`${integerize(Math.max(0,job.remainingFrames)/10,'ceil')} 秒`;
   return `處理中 · ${kind}顧客 #${job.customerId} · ${product} · 剩餘 ${timer}`;
 }
-
 function robotCustomerStatusText(type,id){
   const robot=visualState.robotEmployees.find(item=>item.job?.customerId===id&&item.job?.type===type);
   return robot?.job?robotJobStatusText(robot):'等待製作';
 }
-
 function finishBeanScan(){
   beanScanRun++;$('beanScanCard')?.classList.remove('scanning');$('beanScanStage').classList.add('hidden');$('skipBeanScan').classList.add('hidden');
   $('beanDrawResultGrid').classList.remove('hidden');
 }
-
 async function playScanStep(run,getCurrentRun,card,prepare,reveal){
   if(!card)return false;
   prepare?.();
@@ -1882,7 +1746,6 @@ async function playScanStep(run,getCurrentRun,card,prepare,reveal){
   await ScheduleSystem.delayReal(450);
   return run===getCurrentRun();
 }
-
 async function playBeanScan(results){
   const run=++beanScanRun,card=$('beanScanCard');
   DisplayText.setHTML($('beanScanStage').querySelector('.scan-bean-symbol'), COFFEE_BEAN_SVG);
@@ -1896,7 +1759,6 @@ async function playBeanScan(results){
   }
   if(run===beanScanRun)finishBeanScan();
 }
-
 async function playMealScan(uniqueId,displayName){
   if(!uniqueId||!displayName)return;
   const run=++mealScanRun;
@@ -1906,16 +1768,12 @@ async function playMealScan(uniqueId,displayName){
   );
   if(completed)window.LMcafeGachaSystem.finishMealDraw();
 }
-
-// 共用視覺元件與調用輔助
 // 所有視覺呈現函式集中於唯一視覺區；遊戲規則與資料運算仍留在原功能區。
 // ============================================================
-
 // 22.2 視覺輔助與動態提示
 function setProgressWidth(element,percent){
   if(element)element.style.width=`${Math.max(0,Math.min(100,Number(percent)||0))}%`;
 }
-
 function createVisualNode(tag,className='',text){
   const node=document.createElement(tag);
   if(className)node.className=className;
@@ -1938,7 +1796,6 @@ function updateDepartureAlerts(){
       active.push(customer.id);
     }
   }
-  // 只呈現目前仍在等待且進入最後 3 秒的顧客，離店或完成後自動清除。
   host.replaceChildren();
   active.slice(0,4).forEach(id=>{
     const el=createVisualNode('div','departure-alert',`外帶 #${id} 即將離店`);
@@ -1946,15 +1803,11 @@ function updateDepartureAlerts(){
     host.append(el);
   });
 }
-
-
 function promoteStatusBar(){
   const bar=document.querySelector('.top-status-bar');
   if(!bar || typeof bar.showPopover!=='function')return;
   try{if(bar.matches(':popover-open'))bar.hidePopover();bar.showPopover();}catch(_error){}
 }
-
-
 // 22.3 劇情、通知與顧客呈現
 function drawNoticeLog(){
   const host=$('noticeList'); if(!host)return;
@@ -1967,7 +1820,6 @@ function drawNoticeLog(){
     host.append(createCard('notice-item',[meta,body],'article'));
   });
 }
-
 function drawCustomerList(channel,hostId){
   const box=$(hostId);if(!box)return;box.replaceChildren();
   const isIndoor=channel==='indoor',now=visualState.gameFrame;
@@ -2024,7 +1876,6 @@ function drawCustomProduction(){
   });
   preview.append(cup);DisplayText.setText(result,'已加入 '+selected.length+' 種原料');make.disabled=false;return true;
 }
-
 function drawSpecialCustomer(){
   const area=$('specialCustomerArea'),host=$('specialCustomerCard');
   if(!area||!host)return;
@@ -2039,7 +1890,6 @@ function drawSpecialCustomer(){
   button.dataset.specialCustomerAction=String(customer.id);
   card.append(heading,button);host.append(card);
 }
-
 function drawEventDialog(id=visualState?.eventId){
   const event=EVENT_DEFINITIONS[id];
   if(!event)return false;
@@ -2054,14 +1904,12 @@ function drawEventDialog(id=visualState?.eventId){
   VisualSystem.dispatch('dialog.open','eventDialog');
   return true;
 }
-
 function openSpecialCustomerProduction(id){
   const customer=state.specialCustomer;
   if(!customer||customer.id!==id)return false;
   VisualSystem.dispatch('feature.show','customProductionView','客製化製作');
   return true;
 }
-
 function drawRobotManagement(){
   const list=$('robotManagementList');
   const count=$('robotEmployeeCount');
@@ -2090,8 +1938,6 @@ function drawRobotManagement(){
     list.append(createCard('device-row',[info,tag]));
   });
 }
-
-
 // 22.4 主畫面與功能頁呈現
 function drawPowerView(){
   const devices=visualState.devices||{};
@@ -2130,19 +1976,15 @@ function drawFeatureView(id,title){
   DisplayText.setText($('materialSelectedMilk'), mt?.selectedOptions?.[0]?.textContent||'鮮乳');
  }
 }
-
 function openFeature(kind){
  VisualSystem.dispatch('dialog.open', 'featureDialog');
  if(kind==='production')VisualSystem.dispatch('feature.show','productionTakeoutView','製作區');
  else if(kind==='power')VisualSystem.dispatch('feature.show','powerView','電力區');
 }
-
 function drawGameView() {
-  // 統一更新目前畫面所需的資料與狀態
   MEAL_INGREDIENT_KEYS.forEach((k,i)=>{const el=$(`mealIng${i}`);if(el)DisplayText.setText(el, visualState.mealIngredients[k]||0);}); if($('mealGachaMoney'))DisplayText.setText($('mealGachaMoney'), moneyText(visualState.money));
   VisualSystem.dispatch('achievements');
   const put = (id, value) => { const element=$(id);if(element)DisplayText.setText(element,value); };
-
   put('money', moneyText(visualState.money));
   put('moneyTop', moneyText(visualState.money));
   put('gl', moneyText(visualState.gl || 0));
@@ -2152,7 +1994,6 @@ function drawGameView() {
   put('energy', visualState.energyInfinite ? '∞' : visualState.energy);
   put('maxEnergy', visualState.energyInfinite ? '∞' : visualState.maxEnergy);
   put('level', visualState.level);
-  // 狀態條只讀取既有遊戲狀態並更新呈現，不參與遊戲計算。
   const energyPercent = visualState.energyInfinite ? 100 : Math.max(0,Math.min(100,(Number(visualState.energy)||0)/(Number(visualState.maxEnergy)||1)*100));
   setProgressWidth($('topEnergyBar'),energyPercent);
   const calendar=calendarInfo(visualState.day);
@@ -2160,20 +2001,17 @@ function drawGameView() {
   const weatherLabel=visualState.weather === '晴天' ? '晴' : visualState.weather === '陰天' ? '陰' : '雨';
   const eventName=EVENT_DEFINITIONS[visualState.eventId]?.name;
   put('weatherText', eventName?`${weatherLabel} • ${eventName}`:weatherLabel);
-
   const start = threshold(visualState.level);
   const end = threshold(visualState.level + 1);
   const epPercent = Math.max(0,Math.min(100,(visualState.ep-start)/(end-start)*100));
   setProgressWidth($('topEpBar'),epPercent);
   put('epProgressText', `${moneyText(visualState.ep-start)} / ${moneyText(end-start)} EP`);
-
   put('longRep', longRepGrade(visualState.longRep));
   put('shortRep', visualState.shortRep);
   BEANS.forEach(grade => {
     const id = ({"BEAN-6":'Aplus',"BEAN-7":'Sminus',"BEAN-9":'Splus',"BEAN-10":'Rminus',"BEAN-12":'Rplus',"BEAN-13":'SSR'})[grade] || BEAN_GRADE[grade];
     put(`bean${id}`, moneyText(visualState.beans[grade] || 0));
   });
-
   put('cupSmall', visualState.cups['CUP-0']);
   put('cupMedium', visualState.cups['CUP-1']);
   put('cupLarge', visualState.cups['CUP-2']);
@@ -2202,7 +2040,6 @@ function drawGameView() {
   put('income', moneyText(visualState.income));
   put('spend', moneyText(visualState.spend));
   put('net', moneyText(visualState.income-visualState.spend));
-
   $('pricePanel').classList.toggle('hidden', !LevelSystem.isUnlocked('priceAdjustment',null,visualState.level));
   $('milkType').disabled = !LevelSystem.isUnlocked('milk',null,visualState.level);
   document.querySelectorAll('[data-buy-milk]').forEach(button => {
@@ -2216,7 +2053,6 @@ function drawGameView() {
     const id=beanId(button.dataset.bean); button.classList.toggle('primary', id === visualState.selectedBean);
     button.classList.toggle('secondary', id !== visualState.selectedBean); button.disabled=!id || !LevelSystem.isUnlocked('bean',id,visualState.level);
   });
-
   const expansion=getExpansionDetails(visualState.expansionCount);
   const expansionCount=expansion.count;
   const expandButton=$('expandShop'),expansionRow=expandButton.closest('.row');
@@ -2240,12 +2076,10 @@ function drawGameView() {
   $('buyIndoorCups').disabled = !LevelSystem.isUnlocked('indoorCups',null,visualState.level);
   $('setServiceFee').disabled = !LevelSystem.isUnlocked('serviceFee',null,visualState.level)||!(Number(visualState.expansionCount)||0);
   $('setMealLimit').disabled = !LevelSystem.isUnlocked('mealLimit',null,visualState.level)||!(Number(visualState.expansionCount)||0);
-
   $('mealLimit').value = visualState.mealLimit ?? 30;
   if(!$('powerView')?.classList.contains('hidden'))drawPowerView();
   VisualSystem.dispatch('customers');
 }
-
 // 22.5 成就、商店與貸款呈現
 function drawAchievements(){
   document.querySelectorAll('[data-achievement-category]').forEach(button=>button.classList.toggle('active',button.dataset.achievementCategory===achievementCategory));
@@ -2301,7 +2135,6 @@ function drawAchievements(){
     }
   }
 }
-
 function drawShopProducts(model) {
   const host=$('shopProducts');if(!host)return;
   const data=model&&typeof model==='object'?model:{category:'',rows:[]};
@@ -2335,7 +2168,6 @@ function drawShopProducts(model) {
   });
   host.append(list);
 }
-
 function drawLoan(model){
   const data=model&&typeof model==='object'?model:{};
   const maxEl=$('loanMaxLimit'),balanceEl=$('loanBalanceValue'),availableEl=$('loanAvailable');
@@ -2353,8 +2185,6 @@ function drawLoan(model){
   if(estimate)DisplayText.setText(estimate,data.estimate||'尚無貸款');
   if(estimateHint)DisplayText.setText(estimateHint,data.estimateHint||'');
 }
-
-
 // 22.6 智控電腦呈現
 function drawControlComputer(partId=null){
   const board=$('computerBoardView');
@@ -2381,11 +2211,8 @@ function drawControlComputer(partId=null){
   document.querySelector('.feature-head .nav-actions')?.classList.remove('hidden');
   return slots.length;
 }
-
-
 // 22.7 咖啡豆卡片視覺呈現
 const COFFEE_BEAN_SVG='<svg class="coffee-bean-art" viewBox="0 0 100 100" aria-label="咖啡豆圖案" role="img"><defs><linearGradient id="beanGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".98"/><stop offset="1" stop-color="currentColor" stop-opacity=".48"/></linearGradient></defs><path d="M69 8C88 13 96 34 88 57C80 80 57 96 35 92C13 88 3 68 11 45C19 22 46 3 69 8Z" fill="url(#beanGold)" stroke="currentColor" stroke-width="3"/><path d="M24 79C38 67 46 55 51 42C56 29 63 20 77 15C65 30 65 43 57 57C49 71 39 82 24 79Z" fill="#071321" fill-opacity=".72" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
-
 const BEAN_CARD_RARITY = Object.freeze({
   F:Object.freeze({bg:'#09200D',color:'#39FF14',light:'#B5FF9B',glow:'3px',opacity:'20%',inner:'2px',innerOpacity:'20%'}),
   E:Object.freeze({bg:'#09200D',color:'#39FF14',light:'#B5FF9B',glow:'5px',opacity:'25%',inner:'3px',innerOpacity:'25%'}),
@@ -2402,7 +2229,6 @@ const BEAN_CARD_RARITY = Object.freeze({
   'R+':Object.freeze({bg:'#290D1B',color:'#FF4F87',light:'#FFC0CB',glow:'21px',opacity:'60%',inner:'11px',innerOpacity:'60%'}),
   SSR:Object.freeze({bg:'#241704',color:'#FFC247',light:'#FFF1B8',glow:'28px',opacity:'70%',inner:'14px',innerOpacity:'70%'})
 });
-
 function createBeanGradeCard(id){
   const grade=BEAN_GRADE[id]||id,rarity=BEAN_CARD_RARITY[grade];
   if(!rarity)return null;
@@ -2417,23 +2243,9 @@ function createBeanGradeCard(id){
   }))card.style.setProperty(key,value);
   return card;
 }
-
-
 // ============================================================
 // 22.8 視覺系統共用調用器
-// 以單一 dispatch 入口處理不同視覺場景；所有畫面操作都由此入口分派，
-// 不再各自建立另一套視覺呼叫系統。
-// 遊戲資料、狀態變更及規則仍由原遊戲系統管理。
 // ============================================================
-
-
-
-// 智控電腦視覺呈現統一區
-
-
-
-
-
 const VisualSystem = Object.freeze({
   dispatch(target='game', ...args){
     const isRootDispatch=visualDispatchDepth===0;
@@ -2625,17 +2437,6 @@ const VisualSystem = Object.freeze({
   }
 });
 window.LMcafeVisualSystem = VisualSystem;
-
-
-
-
-
-
-
-
-
-
-
 // ============================================================
 // 18. 貸款核心功能
 // ============================================================
@@ -2657,21 +2458,16 @@ function applyLoan(amount){
   VisualSystem.dispatch('game');
   return true;
 }
-
 // ============================================================
 // 19. 抽卡程式區｜唯一 ID 驅動
 // 所有抽卡池、機率、條件、結果與執行流程集中於此。
-// 其他功能區只能透過 LMcafeAPI 的抽獎公開接口呼叫。
 // ============================================================
 let beanDrawPending = false;
 let mealDrawPending = false;
 let beanScanRun = 0;
 let mealScanRun = 0;
-
 const MEAL_INGREDIENT_NAMES = Object.freeze({bread:'吐司',flour:'麵粉',rice:'白米',chicken:'雞肉',egg:'雞蛋',milk:'營業用乳',butter:'奶油',cream:'鮮奶油',yogurt:'優格',lettuce:'生菜',tomato:'番茄',cucumber:'小黃瓜',onion:'洋蔥',potato:'馬鈴薯',fruit:'水果',ketchup:'番茄醬',jam:'果醬',sauce:'醬料',sugar:'糖'});
 const MEAL_INGREDIENT_KEYS = Object.freeze(Object.keys(MEAL_INGREDIENT_NAMES));
-
-// 食材池直接使用 ID 管理區已登記的唯一 ID，不再使用獨立字串代碼。
 const MEAL_INGREDIENT_CATEGORIES = Object.freeze([
   Object.freeze(['ING-0','ING-1','ING-2']),
   Object.freeze(['ING-3']),
@@ -2681,7 +2477,6 @@ const MEAL_INGREDIENT_CATEGORIES = Object.freeze([
   Object.freeze(['ING-15','ING-16','ING-17']),
   Object.freeze(['ING-18'])
 ]);
-
 const GachaSystem = (() => {
   const BEAN_DRAW_WEIGHT = Object.freeze({"BEAN-7":1,"BEAN-8":1/2,"BEAN-9":1/4,"BEAN-10":1/8,"BEAN-11":1/16,"BEAN-12":1/32,"BEAN-13":1/64});
   const getBeanPool = (level=state.level) => {
@@ -2764,11 +2559,9 @@ const GachaSystem = (() => {
   return Object.freeze({getBeanPool,getMealPool,canDraw,canDrawBeans,canDrawMeal,isBeanDrawPending:()=>beanDrawPending,isMealDrawPending:()=>mealDrawPending,drawBeans,drawMealIngredient,draw,finishMealDraw,cancelMealDraw,closeBeanResults,getResults});
 })();
 window.LMcafeGachaSystem=GachaSystem;
-
 // ============================================================
 // 架構登記區：與主程式共用作用域，並在初始化及事件綁定前完成登記。
 // ============================================================
-
     /*
          * 函式清單依照既有 01～13 分類整理；顧客資料與到店流程歸入 03，製作流程歸入 05，機器人接單與工作歸入 06。
      * 本版建立分類、函式登記及唯一時間流程轉接，不另建時鐘。
@@ -2781,7 +2574,6 @@ window.LMcafeGachaSystem=GachaSystem;
      * 所有遊戲時間只能由唯一遊戲鐘取得；所有實際時間只能由唯一實際鐘取得。
      * 100ms 觸發只傳送判斷要求，不得作為時間訊號。
      */
-
     const areaNames = Object.freeze({
       "01": "遊戲核心統一區",
       "02": "ID 管理統一區",
@@ -2797,7 +2589,6 @@ window.LMcafeGachaSystem=GachaSystem;
       "12": "其他功能統一區",
       "13": "視覺與 UI 統一區"
     });
-
     /*
      * N02｜ID 管理統一區
      * 格式：類別前綴-流水號；不補零；各類別獨立編號，從 0 起算。
@@ -2816,13 +2607,11 @@ window.LMcafeGachaSystem=GachaSystem;
       ["MENU", 3]
     ]);
     const ID_PREFIXES = Object.freeze([...idCounters.keys()]);
-
     function 驗證ID格式(id) {
       if (typeof id !== "string") return false;
       const match = /^(CUP|BEAN|MILK|ING|BOT|MENU)-(0|[1-9]\d*)$/.exec(id);
       return Boolean(match);
     }
-
     function 產生ID序號(prefix) {
       if (!ID_PREFIXES.includes(prefix)) {
         throw new TypeError("不支援的 ID 類別前綴");
@@ -2838,7 +2627,6 @@ window.LMcafeGachaSystem=GachaSystem;
       generatedIds.add(candidate);
       return candidate;
     }
-
     function 登記ID(id, name = "") {
       if (!驗證ID格式(id)) return false;
       if (issuedIds.has(id) && !generatedIds.has(id)) return false;
@@ -2856,19 +2644,15 @@ window.LMcafeGachaSystem=GachaSystem;
       if (serial >= next) idCounters.set(prefix, serial + 1);
       return true;
     }
-
     function 查詢ID(id) {
       return idRecords.get(id) ?? null;
     }
-
     function 查詢ID名稱(id) {
       return idRecords.get(id)?.name ?? null;
     }
-
     function 驗證ID(id) {
       return 驗證ID格式(id) && idRecords.has(id);
     }
-
     /*
      * 唯一 ID 對照資料只登記於 idRecords。
      * BEAN / ING 名稱直接取自既有資料定義，不另建第二份 ID 對照表。
@@ -2877,10 +2661,7 @@ window.LMcafeGachaSystem=GachaSystem;
     CUP_DEFS.forEach(item=>登記ID(item.id,item.label));
     Object.keys(MEAL_INGREDIENT_NAMES).forEach((key,index)=>登記ID(`ING-${index}`,key));
     Object.entries(MILK_INFO).forEach(([,item])=>登記ID(item.id,item.label));
-
-    // 其他既有 ID 只登記已確認的序號，保留原有編號，不擅自補名稱。
     for (let serial = 0; serial <= 2; serial += 1) 登記ID(`MENU-${serial}`);
-
     const getCustomerSnapshot = () => state.customers.map(customer=>({...customer}));
     const getRobotSnapshot = () => state.robotEmployees.map(robot=>({...robot,job:robot.job?{...robot.job}:null}));
     const getShopData = () => ({beans:BEAN_COST,cups:CUP_COST,milk:MILK_INFO});
@@ -2893,8 +2674,6 @@ window.LMcafeGachaSystem=GachaSystem;
     const getHardware = () => ({devices:{...state.devices},controlComputer:INITIAL_CONTROL_COMPUTER.map(part=>({...part}))});
     const getElectricity = () => ({dailyUsage:getDailyElectricityUsage(),dailyCost:getDailyElectricityCost(),periodUsage:state.electricityPeriodUsage,periodCost:state.electricityPeriodCost,totalUsage:state.electricityTotalUsage,totalCost:state.electricityTotalCost,nextBillDay:state.utilityDue});
     const buyStock = (type,key) => type==='bean' ? buyBean(key) : type==='cup' ? buyCups(key) : type==='milk' ? buyMilk(key) : false;
-
-    // 公開 API 直接指向實際功能，不建立占位函式、暫存登記表或轉接層。
     const LMcafeAPI = Object.freeze({
       "01": Object.freeze({
         "遊戲狀態管理/取得遊戲狀態": window.LMcafeTimeSystem.getState,
@@ -2964,7 +2743,6 @@ window.LMcafeGachaSystem=GachaSystem;
         "13-4 視覺樣式統一區/取得統一樣式": () => VisualSystem.dispatch('styles.get')
       })
     });
-
     // 架構目錄直接由實際公開 API 產生，避免維護第二份過時的功能清單。
     const FUNCTION_MANIFEST = Object.freeze(Object.entries(LMcafeAPI).flatMap(([area, functions]) =>
       Object.keys(functions).map(path => {
@@ -2979,19 +2757,11 @@ window.LMcafeGachaSystem=GachaSystem;
       functionManifest: FUNCTION_MANIFEST,
       getFunctionCount: () => FUNCTION_MANIFEST.length
     });
-
     window.LMcafeAPI = LMcafeAPI;
     state.robotEmployees.forEach(robot=>{if(typeof robot.id==='number'){robot.id=window.LMcafeAPI['02']['ID 建立/建立新 ID']('BOT');window.LMcafeAPI['02']['ID 登記/登記 ID'](robot.id);}});
     window.LMcafeArchitecture = LMcafeArchitecture;
     window.LMcafeIDPrefixes = ID_PREFIXES;
-
-
-    // 核心時間與排程系統已由主程式初始化。
-  
-
-
 // 主程式初始化：正規化狀態、綁定操作並啟動遊戲流程。
-
 VisualSystem.dispatch('screen','L0');
 normalizeBeanCupState(state);
 normalizeBeanUnlockState(state);
@@ -2999,17 +2769,13 @@ if(BEANS.length!==14 || CUP_IDS.length!==4) throw new Error('Bean/Cup ID registr
 bindGameEvents();
 rollOrdinaryWeather();
 VisualSystem.dispatch('game');
-
 scheduleCustomerArrival();
 scheduleIndoorArrival();
 VisualSystem.dispatch('pauseState', timestop);
 TimeSystem.start();
-
 })();
-
 // ============================================================
 // 21. 音效與音樂統一區
-// 音效僅使用 S01～S04；本區只負責音效與音樂播放。
 // ============================================================
 (function(){
  const integerize=window.LMcafeAPI['01']['數值計算/整數化'];
@@ -3110,7 +2876,6 @@ TimeSystem.start();
  sync();
  window.LMcafeAudioSystem=Object.freeze({play,playButton,activate,setMusicVolume,setSfxVolume,toggleMute,parameters:SOUND_PARAMETERS,sampleRate:SAMPLE_RATE,baseVolume:BASE_VOLUME});
 })();
-
 </script>
 
 </body></html>
