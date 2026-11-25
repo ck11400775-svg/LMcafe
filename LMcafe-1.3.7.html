@@ -751,8 +751,11 @@ const LevelSystem = Object.freeze({
 });
 const DEFAULT_BEANS = Object.fromEntries(BEANS.map(id=>[id,0]));
 const DEFAULT_CUPS = Object.fromEntries(CUP_IDS.map(id=>[id,0]));
-function beanId(value){return BEAN_DEFS.find(item=>item.id===value||item.grade===value)?.id||null;}
-function cupId(value){return CUP_DEFS.find(item=>item.id===value||item.key===value||item.label===value)?.id||null;}
+function resolveCatalogId(definitions,value,aliases=[]){
+  return definitions.find(item=>item.id===value||aliases.some(key=>item[key]===value))?.id||null;
+}
+function beanId(value){return resolveCatalogId(BEAN_DEFS,value,['grade']);}
+function cupId(value){return resolveCatalogId(CUP_DEFS,value,['key','label']);}
 function normalizeBeanCupState(target){
   const oldBeans=target.beans||{}; const oldCups=target.cups||{};
   target.beans=Object.fromEntries(BEANS.map(id=>[id,Number(oldBeans[id]??oldBeans[BEAN_GRADE[id]]??0)||0]));
@@ -3235,8 +3238,15 @@ TimeSystem.start();
   else if(button.dataset.interfaceBack!==undefined||button.dataset.interfaceHome!==undefined)soundId='S03';
   return play(soundId);
  }
- function setMusicVolume(value){musicVol=Math.max(0,Math.min(1,(Number(value)||0)/100));sync();persist();}
- function setSfxVolume(value){sfxVol=Math.max(0,Math.min(1,(Number(value)||0)/100));sync();persist();}
+ function setVolume(channel,value){
+  const volume=Math.max(0,Math.min(1,(Number(value)||0)/100));
+  if(channel==='music')musicVol=volume;
+  else if(channel==='sfx')sfxVol=volume;
+  else return false;
+  sync();persist();return true;
+ }
+ const setMusicVolume=value=>setVolume('music',value);
+ const setSfxVolume=value=>setVolume('sfx',value);
  function toggleMute(){muted=!muted;sync();persist();return muted;}
  function sync(){
   window.LMcafeVisualSystem.dispatch('audio.settings',{musicValue:integerize(musicVol*100,'round'),sfxValue:integerize(sfxVol*100,'round'),musicText:integerize(musicVol*100,'round')+'%',sfxText:integerize(sfxVol*100,'round')+'%',muteText:muted?'解除靜音':'靜音',muted});
