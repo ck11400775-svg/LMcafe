@@ -3183,24 +3183,28 @@ TimeSystem.start();
    return ctx;
   }catch(_error){ctx=null;return null;}
  }
- function voice(freq,dur,vol,bus,type='sine',delay=0,attack=.22){
-  if(!ctx||!bus)return;
-  const length=Math.max(1,integerize(SAMPLE_RATE*dur,'floor')),buffer=ctx.createBuffer(1,length,SAMPLE_RATE),samples=buffer.getChannelData(0);
-  const attackSamples=Math.max(1,integerize(SAMPLE_RATE*attack,'floor'));
+ function renderTone(duration,volume,bus,waveform,attack,phaseAt,delay=0){
+  if(!ctx||!bus)return false;
+  const length=Math.max(1,integerize(SAMPLE_RATE*duration,'floor'));
+  const buffer=ctx.createBuffer(1,length,SAMPLE_RATE),samples=buffer.getChannelData(0);
+  const attackSamples=Math.max(1,SAMPLE_RATE*attack);
   for(let i=0;i<length;i++){
-   const t=i/SAMPLE_RATE,phase=2*Math.PI*freq*t;
-   let wave=type==='triangle'?(2/Math.PI)*Math.asin(Math.sin(phase)):Math.sin(phase);
+   const phase=phaseAt(i,length);
+   const wave=waveform==='triangle'?(2/Math.PI)*Math.asin(Math.sin(phase)):Math.sin(phase);
    const envelope=Math.min(1,i/attackSamples)*Math.max(0,1-i/length);
-   samples[i]=wave*vol*envelope;
+   samples[i]=wave*volume*envelope;
   }
   const source=ctx.createBufferSource();source.buffer=buffer;source.connect(bus);source.start(ctx.currentTime+Math.max(0,delay));
+  return true;
  }
  function musicStep(){
   if(!ctx||!musicBus)return;
-  const n=step%scale.length;voice(scale[n],2.1,.055,musicBus,'sine',0,.35);
-  if(n%2===0)voice(scale[n]*2,1.35,.012,musicBus,'triangle',.08,.18);
-  if(n%4===0)voice(bass[integerize(n/4,'floor')%4],3.2,.026,musicBus,'sine',.12,.5);
-  if(n%4===2)voice(scale[n]*1.5,1.8,.009,musicBus,'sine',.2,.4);
+  const n=step%scale.length;
+  const fixedPhase=frequency=>(i)=>2*Math.PI*frequency*i/SAMPLE_RATE;
+  renderTone(2.1,.055,musicBus,'sine',.35,fixedPhase(scale[n]));
+  if(n%2===0)renderTone(1.35,.012,musicBus,'triangle',.18,fixedPhase(scale[n]*2),.08);
+  if(n%4===0)renderTone(3.2,.026,musicBus,'sine',.5,fixedPhase(bass[integerize(n/4,'floor')%4]),.12);
+  if(n%4===2)renderTone(1.8,.009,musicBus,'sine',.4,fixedPhase(scale[n]*1.5),.2);
   step++;
  }
  function startMusic(){if(loopTimer!==null||!ctx||ctx.state!=='running')return;musicStep();loopTimer=window.LMcafeScheduleSystem.scheduleReal(musicStep,1450,1450)}
@@ -3212,19 +3216,17 @@ TimeSystem.start();
   if(running)startMusic();
   return running;
  }
- function generateSound(soundId){
-  const params=SOUND_PARAMETERS[soundId];if(!params||!ctx||ctx.state!=='running'||muted)return false;
-  if(sfxVol<=0)return false;
-  const length=Math.max(1,integerize(SAMPLE_RATE*params.duration,'floor')),buffer=ctx.createBuffer(1,length,SAMPLE_RATE),samples=buffer.getChannelData(0);
-  for(let i=0;i<length;i++){
+ async function play(soundId){
+  const params=SOUND_PARAMETERS[soundId],context=initializeAudio();
+  if(!context||!params||muted||sfxVol<=0)return false;
+  if(context.state==='suspended'){try{await context.resume();}catch(_error){return false;}}
+  if(context.state!=='running')return false;
+  const phaseAt=(i,length)=>{
    const progress=i/length;
-   const phase=2*Math.PI*(params.startFrequency*progress+(params.endFrequency-params.startFrequency)*progress*progress/2)*params.duration;
-   const envelope=Math.min(1,i/Math.max(1,SAMPLE_RATE*FADE_IN))*Math.max(0,1-i/length);
-   samples[i]=(params.waveform==='triangle'?(2/Math.PI)*Math.asin(Math.sin(phase)):Math.sin(phase))*BASE_VOLUME*envelope;
-  }
-  const source=ctx.createBufferSource();source.buffer=buffer;source.connect(sfxBus);source.start();return true;
+   return 2*Math.PI*(params.startFrequency*progress+(params.endFrequency-params.startFrequency)*progress*progress/2)*params.duration;
+  };
+  return renderTone(params.duration,BASE_VOLUME,sfxBus,params.waveform,FADE_IN,phaseAt);
  }
- async function play(soundId){const context=initializeAudio();if(!context||!SOUND_PARAMETERS[soundId]||muted)return false;if(context.state==='suspended'){try{await context.resume();}catch(_error){return false;}}return generateSound(soundId)}
  function playButton(button){
   if(!button||button.disabled)return false;
   let soundId='S04';
