@@ -545,7 +545,6 @@ const SERVICE_FEE_REP = {0:2,5:1,10:0,15:-1,20:-2,25:-3,30:-4};
 const CUSTOMER_WAIT_FRAMES = 100;
 const ROBOT_BASE_COST = 40000;
 const BEAN_COST = {"BEAN-0":1000,"BEAN-1":1500,"BEAN-2":2000,"BEAN-3":2500,"BEAN-4":3000,"BEAN-5":3500,"BEAN-6":4000,"BEAN-7":null,"BEAN-8":null,"BEAN-9":null,"BEAN-10":null,"BEAN-11":null,"BEAN-12":null,"BEAN-13":null};
-const BEAN_TEMPORARY_PRICE = new Set();
 const BEAN_GACHA_ONLY = new Set(['BEAN-7','BEAN-8','BEAN-9','BEAN-10','BEAN-11','BEAN-12','BEAN-13']);
 const CUP_COST = {"CUP-0":150,"CUP-1":300,"CUP-2":400,"CUP-3":500};
 const CUP_PRICE = {"CUP-0":35,"CUP-1":55,"CUP-2":70,"CUP-3":80};
@@ -821,7 +820,7 @@ function buyBean(grade) {
   grade=beanId(grade); if(!grade || !(grade in BEAN_COST)) return;
   const unlock = LevelSystem.required('bean',grade);
   if (!LevelSystem.isUnlocked('bean',grade)) return notify(`${BEAN_GRADE[grade]} 級咖啡豆需 LV${unlock} 解鎖。`);
-  if (BEAN_GACHA_ONLY.has(grade)) return notify(`${BEAN_GRADE[grade]} 級咖啡豆為抽卡限定，不能直接購買。`); purchase(BEAN_COST[grade], `${BEAN_GRADE[grade]} 級咖啡豆 1kg${BEAN_TEMPORARY_PRICE.has(grade) ? '（臨時價格）' : ''}`,
+  if (BEAN_GACHA_ONLY.has(grade)) return notify(`${BEAN_GRADE[grade]} 級咖啡豆為抽卡限定，不能直接購買。`); purchase(BEAN_COST[grade], `${BEAN_GRADE[grade]} 級咖啡豆 1kg`,
     () => state.beans[grade] += 1000);
 }
 function buyCups(size) {
@@ -834,7 +833,7 @@ function buyMilk(type) {
   if(!LevelSystem.isUnlocked('milk'))return notify('牛奶原料需 LV5 解鎖。');
   const item = MILK_INFO[type];
   if (!item) return;
-  purchase(item.cost, `${item.label} ${item.pack}${item.unit}${item.temporaryPrice ? '（臨時價格）' : ''}`,
+  purchase(item.cost, `${item.label} ${item.pack}${item.unit}`,
     () => state.milkStock[type] += item.pack);
 }
 function expandShop(){
@@ -1670,13 +1669,13 @@ function getShopDisplayData(category,sourceState=visualState){
   const add=(title,detail,price,button,disabled=false,action='',actionKey=null)=>rows.push({title,detail,price,button,disabled,action,actionKey});
   if(category==='beans'){
     BEANS.filter(grade=>!BEAN_GACHA_ONLY.has(grade)).forEach(grade=>{
-      const unlock=LevelSystem.required('bean',grade),locked=!LevelSystem.isUnlocked('bean',grade,sourceState.level),temporary=BEAN_TEMPORARY_PRICE.has(grade);
-      add(`${BEAN_GRADE[grade]} 級咖啡豆 · 1 kg`,`${locked?`LV${unlock} 解鎖`:'已解鎖'}${temporary?' · 臨時價格':''}`,`${moneyText(BEAN_COST[grade])} LT`,locked?`需 LV${unlock}`:'購買',locked,'bean',grade);
+      const unlock=LevelSystem.required('bean',grade),locked=!LevelSystem.isUnlocked('bean',grade,sourceState.level);
+      add(`${BEAN_GRADE[grade]} 級咖啡豆 · 1 kg`,`${locked?`LV${unlock} 解鎖`:'已解鎖'}`,`${moneyText(BEAN_COST[grade])} LT`,locked?`需 LV${unlock}`:'購買',locked,'bean',grade);
     });
   }else if(category==='cups'){
     CUP_IDS.forEach(size=>{const locked=!LevelSystem.isUnlocked('cup',size,sourceState.level);add(`${CUP_LABEL[size]}外帶杯 · 100 個`,locked?`LV${LevelSystem.required('cup',size)} 解鎖`:'已解鎖',`${moneyText(CUP_COST[size])} LT`,locked?`需 LV${LevelSystem.required('cup',size)}`:'購買',locked,'cup',size);});
   }else if(category==='milk'){
-    Object.entries(MILK_INFO).forEach(([type,item])=>{const temporary=!!item.temporaryPrice;add(`${item.label} · ${item.pack}${item.unit}`,'LV5 開放'+(temporary?' · 臨時價格':''),`${moneyText(item.cost)} LT${temporary?'（臨時）':''}`,!LevelSystem.isUnlocked('milk',null,sourceState.level)?'需 LV5':(temporary?'購買（臨時價格）':'購買'),!LevelSystem.isUnlocked('milk',null,sourceState.level),'milk',type);});
+    Object.entries(MILK_INFO).forEach(([type,item])=>{add(`${item.label} · ${item.pack}${item.unit}`,'LV5 開放',`${moneyText(item.cost)} LT`,!LevelSystem.isUnlocked('milk',null,sourceState.level)?'需 LV5':'購買',!LevelSystem.isUnlocked('milk',null,sourceState.level),'milk',type);});
   }else if(category==='decor'){
     add('店內裝潢','功能暫停中','','未開放',false,'decor');
   }else if(category==='robot'){
