@@ -493,10 +493,6 @@ const DisplayText = Object.freeze({
   notify(message) {
     const text = String(message ?? '').trim();
     if (!text) return;
-    const now = TimeSystem.getRealTime();
-    if (text === lastPromptMessage && now - lastPromptAt < 1800) return;
-    lastPromptMessage = text;
-    lastPromptAt = now;
     addNotice('通知', text);
     PauseNotice.enqueue(text);
   },
@@ -2154,6 +2150,11 @@ function createBeanGradeCard(id){
 // 視覺系統共用調用器
 const VisualSystem = Object.freeze({
   dispatch(target='game', ...args){
+    if(target==='screen'&&args[0]==='L1'&&!gameHasStarted){
+      gameHasStarted=true;
+      activateDayEvent();
+      openingEvent();
+    }
     const isRootDispatch=visualDispatchDepth===0;
     const needsSnapshot=['game','feature.show','noticeLog','customers','robotManagement','robotCountdowns','controlComputer','achievements','shopProducts','loan','shop.category','feature.tab','beanGacha.refresh','beanDrawResults','mealScan','mealGacha.refresh','achievement.archive.open','event.show','customProduction'].includes(target);
     if(isRootDispatch&&needsSnapshot)visualState=createVisualSnapshot();
@@ -2182,14 +2183,7 @@ const VisualSystem = Object.freeze({
         const bar=document.querySelector('.top-status-bar');
         if(mode==='L0'){
           if(bar&&bar.matches(':popover-open'))bar.hidePopover();
-        }else{
-          promoteStatusBar();
-          if(!gameHasStarted){
-            gameHasStarted=true;
-            activateDayEvent();
-            openingEvent();
-          }
-        }
+        }else promoteStatusBar();
         return mode;
       }
       case 'shop.category': {
