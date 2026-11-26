@@ -1858,24 +1858,25 @@ function drawCustomerList(channel,hostId){
     const status=createVisualNode('div','customer-status');status.dataset.robotCustomerStatus=`${channel}:${customer.id}`;
     DisplayText.setText(status,isIndoor&&customer.status==='eating'?'用餐中':robotCustomerStatusText(channel,customer.id));
     description.append(heading,status);card.append(description);
-    if(customer.status==='waiting'){
-      const wait=waitProgress(customer.arrivedFrame,now);
-      const label=createVisualNode('div','muted',isIndoor?'等待製作中':`等待倒數 ${integerize(wait.remaining/10,'ceil')} 秒`);
+    if(customer.status==='waiting'||(isIndoor&&customer.status==='eating')){
+      const eating=customer.status==='eating';
+      const elapsed=eating?Math.max(0,now-customer.mealStartedFrame):0;
+      const wait=eating?null:waitProgress(customer.arrivedFrame,now);
+      const labelText=eating?`剩餘 ${integerize(Math.max(0,customer.mealDurationFrames-elapsed)/10,'ceil')} 秒`
+        :isIndoor?'等待製作中':`等待倒數 ${integerize(wait.remaining/10,'ceil')} 秒`;
+      const progressValue=eating?elapsed/customer.mealDurationFrames*100:isIndoor?0:wait.percent;
+      const label=createVisualNode('div','muted',labelText);
       const progress=createVisualNode('div','progress customer-progress');
-      const fill=createVisualNode('div');setProgressWidth(fill,isIndoor?0:wait.percent);progress.append(fill);
+      const fill=createVisualNode('div');setProgressWidth(fill,progressValue);progress.append(fill);
       card.append(label,progress);
-      const plan=getCustomerCoffeePlan(customer,visualState.selectedBean,visualState.selectedMilk,visualState);
-      const missing=plan.missingMaterials||[];
-      const button=createVisualNode('button','primary customer-action-button'+(missing.length?' material-shortage':''),missing.length?'缺少：'+missing.join('、'):'製作此顧客需求');
-      button.dataset.customerAction=String(customer.id);
-      button.disabled=missing.length>0;
-      card.append(button);
-    }else if(isIndoor&&customer.status==='eating'){
-      const elapsed=Math.max(0,now-customer.mealStartedFrame),left=Math.max(0,customer.mealDurationFrames-elapsed);
-      const label=createVisualNode('div','muted',`剩餘 ${integerize(left/10,'ceil')} 秒`);
-      const progress=createVisualNode('div','progress customer-progress');
-      const fill=createVisualNode('div');setProgressWidth(fill,elapsed/customer.mealDurationFrames*100);progress.append(fill);
-      card.append(label,progress);
+      if(!eating){
+        const plan=getCustomerCoffeePlan(customer,visualState.selectedBean,visualState.selectedMilk,visualState);
+        const missing=plan.missingMaterials||[];
+        const button=createVisualNode('button','primary customer-action-button'+(missing.length?' material-shortage':''),missing.length?'缺少：'+missing.join('、'):'製作此顧客需求');
+        button.dataset.customerAction=String(customer.id);
+        button.disabled=missing.length>0;
+        card.append(button);
+      }
     }
     box.append(card);
   }
