@@ -1478,6 +1478,7 @@ function bindGameEvents() {
     const button=target.closest('button');
     if(!button)return;
     if(button.disabled)return;
+    if(button.id==='startGame')return;
     const navAction=button.dataset.interfaceClose!==undefined?'close':button.dataset.interfaceBack!==undefined?'back':button.dataset.interfaceHome!==undefined?'home':null;
     if(navAction){navigateInterface(navAction,button.dataset.interfaceClose??button.dataset.interfaceBack??button.dataset.interfaceHome);return;}
     VisualSystem.dispatch('button.feedback',button);
