@@ -665,7 +665,6 @@ function openingEvent() {
   const dialog = $('openingDiscountDialog');
   if (dialog && !dialog.open) VisualSystem.dispatch('dialog.open', dialog);
 }
-// 功能區只呼叫唯一顯示提示文字區，不自行執行通知或紀錄文字呈現。
 const notify = DisplayText.notify;
 const record = DisplayText.record;
 function openSpecialCustomerProduction(id){
@@ -1625,7 +1624,6 @@ function getVisualStyles(){
   const css=getComputedStyle(document.documentElement);
   return Object.freeze({background:css.getPropertyValue('--bg').trim(),surface:css.getPropertyValue('--paper').trim(),text:css.getPropertyValue('--ink').trim(),muted:css.getPropertyValue('--muted').trim(),accent:css.getPropertyValue('--accent').trim()||css.getPropertyValue('--brown').trim(),line:css.getPropertyValue('--line').trim()});
 }
-// 22.1 抽取掃描與即時狀態呈現
 function drawBeanGacha(model){
   const data=model&&typeof model==='object'?model:{};
   DisplayText.setText($('gachaMoney'), moneyText(data.money||0));
@@ -1650,7 +1648,6 @@ function robotCustomerStatusText(type,id){
   const robot=visualState.robotEmployees.find(item=>item.job?.customerId===id&&item.job?.type===type);
   return robot?.job?robotJobStatusText(robot):'等待製作';
 }
-// 所有視覺呈現函式集中於唯一視覺區；遊戲規則與資料運算仍留在原功能區。
 let beanScanRun = 0;
 let mealScanRun = 0;
 function finishBeanScan(){
@@ -1834,7 +1831,6 @@ function drawRobotManagement(){
     list.append(createCard('device-row',[info,tag]));
   });
 }
-// 22.4 主畫面與功能頁呈現
 function drawPowerView(){
   const devices=visualState.devices||{};
   const electricity=visualState.electricity||{};
@@ -2073,7 +2069,6 @@ function drawLoan(model){
   if(estimate)DisplayText.setText(estimate,data.estimate||'尚無貸款');
   if(estimateHint)DisplayText.setText(estimateHint,data.estimateHint||'');
 }
-// 22.6 智控電腦呈現
 function drawControlComputer(partId=null){
   const board=$('computerBoardView');
   const detail=$('computerPartDetailView');
