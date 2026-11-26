@@ -680,9 +680,6 @@ function chooseOpeningDiscount(choice, multiplier, message) {
   notify(`D1 開幕折扣已套用：${choice === 'half' ? '五折' : choice === 'eighty' ? '八折' : '不打折'}。`);
   BeanUnlockSystem.announce(['BEAN-0','BEAN-1','BEAN-2']);
 }
-function canCancelOpeningDiscount(){
-  return state.day!==1||state.d1Choice!==null;
-}
 function openingEvent() {
   if (state.day !== 1 || state.d1Choice !== null) return;
   const dialog = $('openingDiscountDialog');
@@ -932,11 +929,6 @@ function getIndoorCapacity(sourceState=state){
   const occupied=(sourceState.customers||[]).reduce((count,customer)=>count+(customer.channel==='indoor'?1:0),0);
   return {occupied,freeSeats:Math.max(0,sourceState.seats-occupied),freeCups:Math.max(0,sourceState.indoorCups-occupied)};
 }
-function canAcceptIndoor(){
-  if(!LevelSystem.isUnlocked('indoor'))return false;
-  const capacity=getIndoorCapacity();
-  return capacity.freeSeats>0&&capacity.freeCups>0;
-}
 function cancelIndoorArrival(){
   if(indoorArrivalTask)ScheduleSystem.cancelGameSchedule(indoorArrivalTask);
   indoorArrivalTask=null;
@@ -954,7 +946,8 @@ function scheduleIndoorArrival(){
 function tickIndoorArrival(){
   indoorArrivalTask=null;
   if(indoorTotalFrames===null)return;
-  const available=canAcceptIndoor();
+  const capacity=getIndoorCapacity();
+  const available=LevelSystem.isUnlocked('indoor')&&capacity.freeSeats>0&&capacity.freeCups>0;
   if(available)indoorElapsedFrames=Math.min(indoorTotalFrames,indoorElapsedFrames+1);else indoorElapsedFrames=Math.min(Math.max(0,indoorTotalFrames-1),indoorElapsedFrames+1);
   const pct=!available&&indoorElapsedFrames>=indoorTotalFrames-1?99:Math.min(99,indoorElapsedFrames/indoorTotalFrames*100);
   VisualSystem.dispatch('indoorArrivalState',{progress:pct,text:available?`${integerize(Math.max(0,indoorTotalFrames-indoorElapsedFrames)/10,'ceil')} 秒`:'等待座位／內用杯（99%）'});
@@ -1201,13 +1194,12 @@ function getDailyElectricityUsage(){
 }
 function getDailyElectricityCost(){return getDailyElectricityUsage()*8;}
 function processElectricity(){
-  const usage=getDailyElectricityUsage(),cost=getDailyElectricityCost();
+  const usage=getDailyElectricityUsage(),cost=usage*8;
   state.electricityPeriodUsage=(Number(state.electricityPeriodUsage)||0)+usage;
   state.electricityTotalUsage=(Number(state.electricityTotalUsage)||0)+usage;
   state.electricityPeriodCost=(Number(state.electricityPeriodCost)||0)+cost;
   state.electricityTotalCost=(Number(state.electricityTotalCost)||0)+cost;
-  return {usage,cost,periodUsage:state.electricityPeriodUsage,periodCost:state.electricityPeriodCost};
-}
+  }
 // 唯一智慧中控與電腦硬體區
 const INITIAL_CONTROL_COMPUTER = Object.freeze([
   Object.freeze({id:'motherboard',part:'主機板',model:'ABD-HM630',size:'MATX'}),
@@ -1543,7 +1535,7 @@ function bindGameEvents() {
   $('chooseEightyDiscount').addEventListener('click', () => chooseOpeningDiscount('eighty', 0.8, '選擇開幕八折。'));
   $('chooseNoDiscount').addEventListener('click', () => chooseOpeningDiscount('none', 1, '選擇開幕不打折。'));
   $('openingDiscountDialog').addEventListener('cancel', event => {
-    if (!canCancelOpeningDiscount()) event.preventDefault();
+    if (state.day===1&&state.d1Choice===null) event.preventDefault();
   });
   $('openProduction').onclick = () => openFeature('production');
   $('openPower').onclick = () => openFeature('power');
